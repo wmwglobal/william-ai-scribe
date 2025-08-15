@@ -15,7 +15,7 @@ const Index = () => {
               <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
                 <Brain className="w-4 h-4 text-primary-foreground" />
               </div>
-              <span className="font-bold text-lg">William White</span>
+              <span className="font-bold text-lg">William MacDonald White</span>
             </div>
             <nav className="hidden md:flex items-center gap-6">
               <Link to="/admin" className="text-muted-foreground hover:text-foreground transition-colors">
