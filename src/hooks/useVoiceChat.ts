@@ -7,6 +7,7 @@ export function useVoiceChat() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const [currentIntent, setCurrentIntent] = useState<string | null>(null);
   const [leadScore, setLeadScore] = useState(0);
   const [transcript, setTranscript] = useState<Array<{speaker: 'visitor' | 'agent', text: string, timestamp: Date}>>([]);
@@ -63,6 +64,11 @@ export function useVoiceChat() {
     if (!sessionId) return;
 
     try {
+      // Show typing indicator
+      setIsTyping(true);
+      
+      // Add a small delay to make it feel more human
+      await new Promise(resolve => setTimeout(resolve, 800));
       const { data, error } = await supabase.functions.invoke('agent_reply', {
         body: {
           session_id: sessionId,
@@ -94,6 +100,8 @@ export function useVoiceChat() {
 
     } catch (error) {
       console.error('Error sending to agent:', error);
+    } finally {
+      setIsTyping(false);
     }
   }
 
@@ -132,6 +140,7 @@ export function useVoiceChat() {
     sessionId,
     isRecording,
     isSpeaking,
+    isTyping,
     currentIntent,
     leadScore,
     transcript,

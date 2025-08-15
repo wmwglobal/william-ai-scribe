@@ -25,6 +25,7 @@ const Chat = () => {
     sessionId,
     isRecording,
     isSpeaking,
+    isTyping,
     currentIntent,
     leadScore,
     transcript,
@@ -223,7 +224,8 @@ const Chat = () => {
                     Conversation will appear here...
                   </p>
                 ) : (
-                  transcript.map((entry, index) => (
+                  <>
+                    {transcript.map((entry, index) => (
                     <div key={index} className={`text-sm p-2 rounded ${
                       entry.speaker === 'agent' 
                         ? 'bg-primary/10 ml-4' 
@@ -237,7 +239,26 @@ const Chat = () => {
                       </div>
                       <div>{entry.text}</div>
                     </div>
-                  ))
+                    ))}
+                    {isTyping && (
+                      <div className="text-sm p-2 rounded bg-primary/10 ml-4 animate-fade-in">
+                        <div className="font-medium text-xs mb-1">
+                          AI William
+                          <span className="text-muted-foreground ml-2">
+                            {new Date().toLocaleTimeString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span>typing</span>
+                          <div className="flex gap-1">
+                            <div className="w-1 h-1 bg-primary rounded-full animate-pulse" style={{animationDelay: '0ms'}}></div>
+                            <div className="w-1 h-1 bg-primary rounded-full animate-pulse" style={{animationDelay: '150ms'}}></div>
+                            <div className="w-1 h-1 bg-primary rounded-full animate-pulse" style={{animationDelay: '300ms'}}></div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </Card>
