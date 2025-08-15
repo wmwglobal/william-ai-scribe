@@ -132,7 +132,7 @@
   
   .speaking-indicator::before {
     content: '';
-    @apply absolute inset-0 bg-speaking-indicator opacity-20 animate-pulse;
+    @apply absolute inset-0 bg-primary/20 animate-pulse;
   }
   
   /* Elegant Shadows */
