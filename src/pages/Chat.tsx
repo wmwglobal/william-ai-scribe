@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import williamHeadshot from '@/assets/william-headshot.jpg';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -172,8 +173,8 @@ const Chat = () => {
           /* Welcome Screen */
           <div className="flex-1 flex items-center justify-center">
             <Card className="p-8 text-center max-w-md shadow-elegant">
-              <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-primary flex items-center justify-center">
-                <User className="w-10 h-10 text-white" />
+              <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-primary flex items-center justify-center overflow-hidden">
+                <img src={williamHeadshot} alt="William MacDonald White" className="w-full h-full object-cover" />
               </div>
               <h2 className="text-2xl font-bold mb-4">Chat with AI William MacDonald White</h2>
               <p className="text-muted-foreground mb-6">
@@ -212,10 +213,10 @@ const Chat = () => {
             {/* Visual Presentation Area */}
             <div className="flex-1 bg-card rounded-lg mb-6 p-8 shadow-card">
               <div className="text-center">
-                <div className={`w-32 h-32 mx-auto mb-6 rounded-full bg-gradient-primary flex items-center justify-center ${
+                <div className={`w-32 h-32 mx-auto mb-6 rounded-full bg-gradient-primary flex items-center justify-center overflow-hidden ${
                   isSpeaking ? 'speaking-indicator' : ''
                 }`}>
-                  <User className="w-16 h-16 text-white" />
+                  <img src={williamHeadshot} alt="William MacDonald White" className="w-full h-full object-cover" />
                 </div>
                 <h3 className="text-xl font-semibold mb-2">AI William MacDonald White</h3>
                 <p className="text-muted-foreground">
