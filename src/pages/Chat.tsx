@@ -8,6 +8,8 @@ import { Mic, MicOff, Volume2, VolumeX, Phone, User, Send, MessageSquare } from 
 import { useToast } from '@/components/ui/use-toast';
 import { useVoiceChat } from '@/hooks/useVoiceChat';
 import { getScoreBadgeVariant } from '@/lib/leadScore';
+import { PersonalitySelector } from '@/components/PersonalitySelector';
+import { WILLIAM_PERSONALITIES, ModelPersonality, getDefaultPersonality } from '@/lib/models';
 
 const Chat = () => {
   const navigate = useNavigate();
@@ -15,6 +17,7 @@ const Chat = () => {
   const [sessionStarted, setSessionStarted] = useState(false);
   const [textMessage, setTextMessage] = useState('');
   const [consent, setConsent] = useState(false);
+  const [selectedPersonality, setSelectedPersonality] = useState<ModelPersonality>(getDefaultPersonality());
   
   const {
     sessionId,
@@ -107,12 +110,16 @@ const Chat = () => {
               <User className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="font-semibold">AI William</h1>
-              <p className="text-sm text-muted-foreground">
-                {!sessionStarted ? "Ready to start" : 
-                 isSpeaking ? "Speaking..." : 
-                 isRecording ? "Listening..." : "Ready"}
-              </p>
+              <h1 className="font-semibold">AI William MacDonald White</h1>
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-muted-foreground">
+                  {!sessionStarted ? "Ready to start" : 
+                   isSpeaking ? "Speaking..." : 
+                   isRecording ? "Listening..." : "Ready"}
+                </p>
+                <div className={`w-2 h-2 rounded-full ${selectedPersonality.color} bg-gradient-to-r`} />
+                <span className="text-xs text-muted-foreground">{selectedPersonality.name}</span>
+              </div>
             </div>
           </div>
           
@@ -127,6 +134,11 @@ const Chat = () => {
                 Score: {leadScore}
               </Badge>
             )}
+            <PersonalitySelector
+              selectedPersonality={selectedPersonality}
+              onPersonalityChange={setSelectedPersonality}
+              disabled={sessionStarted}
+            />
             {sessionStarted && (
               <Button variant="outline" size="sm" onClick={handleEscalate}>
                 Human Please
@@ -145,10 +157,10 @@ const Chat = () => {
               <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-primary flex items-center justify-center">
                 <User className="w-10 h-10 text-white" />
               </div>
-              <h2 className="text-2xl font-bold mb-4">Chat with AI William</h2>
+              <h2 className="text-2xl font-bold mb-4">Chat with AI William MacDonald White</h2>
               <p className="text-muted-foreground mb-6">
-                Start a voice conversation with William's AI twin. He can help with consulting inquiries, 
-                partnerships, and more.
+                Start a voice conversation with William's AI twin. Choose from different personalities and models 
+                for varied expertise and interaction styles.
               </p>
               
               <div className="mb-6">
@@ -187,7 +199,7 @@ const Chat = () => {
                 }`}>
                   <User className="w-16 h-16 text-white" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">AI William</h3>
+                <h3 className="text-xl font-semibold mb-2">AI William MacDonald White</h3>
                 <p className="text-muted-foreground">
                   {isSpeaking ? "Speaking with cloned voice..." : 
                    isRecording ? "Listening..." : "Ready"}
