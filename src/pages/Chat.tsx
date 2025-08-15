@@ -3,24 +3,42 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Mic, MicOff, Volume2, VolumeX, Phone, User } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Mic, MicOff, Volume2, VolumeX, Phone, User, Send, MessageSquare } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { useVoiceChat } from '@/hooks/useVoiceChat';
+import { getScoreBadgeVariant } from '@/lib/leadScore';
 
 const Chat = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [isRecording, setIsRecording] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [sessionStarted, setSessionStarted] = useState(false);
-  const [currentIntent, setCurrentIntent] = useState<string | null>(null);
-  const [leadScore, setLeadScore] = useState(0);
+  const [textMessage, setTextMessage] = useState('');
+  const [consent, setConsent] = useState(false);
+  
+  const {
+    sessionId,
+    isRecording,
+    isSpeaking,
+    currentIntent,
+    leadScore,
+    transcript,
+    createSession,
+    startRecording,
+    stopRecording,
+    stopSpeaking,
+    sendTextMessage
+  } = useVoiceChat();
 
   const startSession = async () => {
     try {
       // Request microphone permissions
       await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Create session with consent
+      await createSession(consent);
       setSessionStarted(true);
+      
       toast({
         title: "Session Started",
         description: "AI William is ready to chat with you!",
@@ -36,16 +54,40 @@ const Chat = () => {
 
   const endSession = () => {
     setSessionStarted(false);
-    setIsRecording(false);
+    if (isRecording) stopRecording();
+    if (isSpeaking) stopSpeaking();
     navigate('/');
   };
 
-  const toggleRecording = () => {
-    setIsRecording(!isRecording);
+  const handleRecordingToggle = async () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      try {
+        await startRecording();
+      } catch (error) {
+        toast({
+          title: "Recording Error",
+          description: "Failed to start recording. Please check microphone permissions.",
+          variant: "destructive",
+        });
+      }
+    }
   };
 
-  const toggleAudio = () => {
-    setIsAudioEnabled(!isAudioEnabled);
+  const handleSendText = async () => {
+    if (!textMessage.trim()) return;
+    
+    try {
+      await sendTextMessage(textMessage);
+      setTextMessage('');
+    } catch (error) {
+      toast({
+        title: "Message Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleEscalate = () => {
@@ -67,7 +109,9 @@ const Chat = () => {
             <div>
               <h1 className="font-semibold">AI William</h1>
               <p className="text-sm text-muted-foreground">
-                {sessionStarted ? (isSpeaking ? "Speaking..." : "Listening...") : "Ready to start"}
+                {!sessionStarted ? "Ready to start" : 
+                 isSpeaking ? "Speaking..." : 
+                 isRecording ? "Listening..." : "Ready"}
               </p>
             </div>
           </div>
@@ -75,17 +119,19 @@ const Chat = () => {
           <div className="flex items-center gap-2">
             {currentIntent && (
               <Badge variant="secondary" className="hidden sm:inline-flex">
-                Intent: {currentIntent}
+                Intent: {currentIntent.replace('_', ' ')}
               </Badge>
             )}
             {leadScore > 0 && (
-              <Badge variant={leadScore >= 70 ? "default" : "secondary"} className="hidden sm:inline-flex">
+              <Badge variant={getScoreBadgeVariant(leadScore)} className="hidden sm:inline-flex">
                 Score: {leadScore}
               </Badge>
             )}
-            <Button variant="outline" size="sm" onClick={handleEscalate}>
-              Human Please
-            </Button>
+            {sessionStarted && (
+              <Button variant="outline" size="sm" onClick={handleEscalate}>
+                Human Please
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -104,11 +150,29 @@ const Chat = () => {
                 Start a voice conversation with William's AI twin. He can help with consulting inquiries, 
                 partnerships, and more.
               </p>
-              <Button onClick={startSession} size="lg" className="w-full shadow-glow">
+              
+              <div className="mb-6">
+                <label className="flex items-center gap-2 text-sm">
+                  <input 
+                    type="checkbox" 
+                    checked={consent} 
+                    onChange={(e) => setConsent(e.target.checked)}
+                    className="rounded"
+                  />
+                  I consent to voice recording and follow-up contact
+                </label>
+              </div>
+              
+              <Button 
+                onClick={startSession} 
+                size="lg" 
+                className="w-full shadow-glow"
+                disabled={!consent}
+              >
                 Start Conversation
               </Button>
               <p className="text-xs text-muted-foreground mt-4">
-                By starting, you agree to our privacy policy and consent to voice recording.
+                Powered by AI voice cloning technology
               </p>
             </Card>
           </div>
@@ -125,16 +189,57 @@ const Chat = () => {
                 </div>
                 <h3 className="text-xl font-semibold mb-2">AI William</h3>
                 <p className="text-muted-foreground">
-                  {isSpeaking ? "Speaking..." : isRecording ? "Listening..." : "Ready"}
+                  {isSpeaking ? "Speaking with cloned voice..." : 
+                   isRecording ? "Listening..." : "Ready"}
                 </p>
               </div>
             </div>
 
-            {/* Live Captions Area */}
-            <Card className="p-4 mb-6 min-h-[120px]">
+            {/* Live Transcript Area */}
+            <Card className="p-4 mb-6 min-h-[200px] max-h-[300px] overflow-y-auto">
               <h4 className="font-medium mb-2">Live Transcript</h4>
-              <div className="text-sm text-muted-foreground">
-                <p className="italic">Conversation will appear here...</p>
+              <div className="space-y-3">
+                {transcript.length === 0 ? (
+                  <p className="text-sm text-muted-foreground italic">
+                    Conversation will appear here...
+                  </p>
+                ) : (
+                  transcript.map((entry, index) => (
+                    <div key={index} className={`text-sm p-2 rounded ${
+                      entry.speaker === 'agent' 
+                        ? 'bg-primary/10 ml-4' 
+                        : 'bg-muted mr-4'
+                    }`}>
+                      <div className="font-medium text-xs mb-1">
+                        {entry.speaker === 'agent' ? 'AI William' : 'You'}
+                        <span className="text-muted-foreground ml-2">
+                          {entry.timestamp.toLocaleTimeString()}
+                        </span>
+                      </div>
+                      <div>{entry.text}</div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </Card>
+
+            {/* Text Input Area */}
+            <Card className="p-4 mb-6">
+              <div className="flex gap-2">
+                <Input
+                  value={textMessage}
+                  onChange={(e) => setTextMessage(e.target.value)}
+                  placeholder="Type a message..."
+                  onKeyPress={(e) => e.key === 'Enter' && handleSendText()}
+                  disabled={isRecording || isSpeaking}
+                />
+                <Button 
+                  onClick={handleSendText}
+                  disabled={!textMessage.trim() || isRecording || isSpeaking}
+                  size="icon"
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
               </div>
             </Card>
 
@@ -142,10 +247,12 @@ const Chat = () => {
             {(currentIntent || leadScore > 0) && (
               <div className="flex flex-wrap gap-2 mb-6">
                 {currentIntent && (
-                  <Badge variant="outline">Intent: {currentIntent}</Badge>
+                  <Badge variant="outline">
+                    Intent: {currentIntent.replace('_', ' ')}
+                  </Badge>
                 )}
                 {leadScore > 0 && (
-                  <Badge variant={leadScore >= 70 ? "default" : "outline"}>
+                  <Badge variant={getScoreBadgeVariant(leadScore)}>
                     Lead Score: {leadScore}
                   </Badge>
                 )}
@@ -155,23 +262,25 @@ const Chat = () => {
         )}
       </div>
 
-      {/* Controls */}
+      {/* Voice Controls */}
       {sessionStarted && (
         <div className="bg-background/90 backdrop-blur-sm border-t p-4">
           <div className="max-w-4xl mx-auto flex items-center justify-center gap-4">
             <Button
               variant="outline"
               size="icon"
-              onClick={toggleAudio}
+              onClick={stopSpeaking}
+              disabled={!isSpeaking}
               className="w-12 h-12"
             >
-              {isAudioEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+              <VolumeX className="w-5 h-5" />
             </Button>
             
             <Button
               variant={isRecording ? "destructive" : "default"}
               size="lg"
-              onClick={toggleRecording}
+              onClick={handleRecordingToggle}
+              disabled={isSpeaking}
               className="w-16 h-16 rounded-full shadow-glow"
             >
               {isRecording ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
@@ -185,6 +294,12 @@ const Chat = () => {
             >
               <Phone className="w-5 h-5" />
             </Button>
+          </div>
+          
+          <div className="text-center mt-2 text-sm text-muted-foreground">
+            {isRecording ? "Recording..." : 
+             isSpeaking ? "AI William is speaking..." :
+             "Click microphone to start recording"}
           </div>
         </div>
       )}

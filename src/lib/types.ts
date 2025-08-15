@@ -105,6 +105,8 @@ export interface AgentReplyResponse {
   ok: boolean;
   text: string;
   extract?: ExtractT;
+  audio_base64?: string;
+  session_id: string;
 }
 
 export interface CTAResponse {
