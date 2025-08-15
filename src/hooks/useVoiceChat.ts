@@ -64,38 +64,46 @@ export function useVoiceChat(audioEnabled: boolean = true) {
     if (!sessionId) return;
 
     try {
+      // Add a natural delay before showing typing indicator (1-4 seconds)
+      const initialDelay = Math.random() * 3000 + 1000;
+      await new Promise(resolve => setTimeout(resolve, initialDelay));
+      
       // Show typing indicator
       setIsTyping(true);
       
-      // Add a small delay to make it feel more human
-      await new Promise(resolve => setTimeout(resolve, 800));
-      const { data, error } = await supabase.functions.invoke('agent_reply', {
-        body: {
-          session_id: sessionId,
-          user_message: userMessage
-        }
-      });
+      // Keep typing indicator visible for a minimum time (2-4 seconds)
+      const typingDuration = Math.random() * 2000 + 2000;
+      // Start the API call and typing timer in parallel
+      const [response] = await Promise.all([
+        supabase.functions.invoke('agent_reply', {
+          body: {
+            session_id: sessionId,
+            user_message: userMessage
+          }
+        }),
+        new Promise(resolve => setTimeout(resolve, typingDuration))
+      ]);
 
-      if (error) throw error;
+      if (response.error) throw response.error;
 
-      const response = data as AgentReplyResponse;
+      const agentResponse = response.data as AgentReplyResponse;
       
       // Add agent response to transcript
       setTranscript(prev => [...prev, {
         speaker: 'agent',
-        text: response.text,
+        text: agentResponse.text,
         timestamp: new Date()
       }]);
 
       // Update intent and lead score if available
-      if (response.extract) {
-        setCurrentIntent(response.extract.intent);
-        setLeadScore(response.extract.lead_score || 0);
+      if (agentResponse.extract) {
+        setCurrentIntent(agentResponse.extract.intent);
+        setLeadScore(agentResponse.extract.lead_score || 0);
       }
 
       // Play TTS audio if available and audio is enabled
-      if (response.audio_base64 && audioEnabled) {
-        await audioPlayer.playAudio(response.audio_base64);
+      if (agentResponse.audio_base64 && audioEnabled) {
+        await audioPlayer.playAudio(agentResponse.audio_base64);
       }
 
     } catch (error) {
