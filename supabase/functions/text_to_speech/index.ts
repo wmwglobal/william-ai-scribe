@@ -35,8 +35,8 @@ serve(async (req) => {
 
     console.log(`Generating speech for session ${session_id}:`, text.substring(0, 100));
 
-    // Use William's voice ID or default to a professional voice
-    const voiceId = voice_id || 'pNInz6obpgDQGcFmaJgB'; // Adam voice as fallback
+    // Use Brian voice (professional male voice) for William MacDonald White
+    const voiceId = voice_id || 'nPczCjzI2devNBz1zQrb'; // Brian voice - professional male
     
     const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
       method: 'POST',
@@ -47,7 +47,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         text: text,
-        model_id: 'eleven_multilingual_v2',
+        model_id: 'eleven_turbo_v2_5', // High quality, low latency
         voice_settings: {
           stability: 0.5,
           similarity_boost: 0.75,
