@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MessageCircle, Users, TrendingUp, Shield, Mic, Brain, Zap } from 'lucide-react';
+import williamHeadshot from '@/assets/william-headshot.jpg';
 
 const Index = () => {
   return (
@@ -31,27 +32,48 @@ const Index = () => {
 
       {/* Hero Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto text-center text-white">
-          <Badge variant="secondary" className="mb-6 text-primary bg-white/20">
-            AI-Powered Conversations
-          </Badge>
-          <h1 className="text-5xl md:text-6xl font-bold mb-6">
-            Chat with AI William
-          </h1>
-          <p className="text-xl md:text-2xl mb-8 text-white/90 max-w-3xl mx-auto">
-            Experience intelligent conversations with William's AI twin. Get instant insights on consulting, 
-            partnerships, and business opportunities through natural voice interactions.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/chat">
-              <Button size="lg" className="w-full sm:w-auto shadow-glow bg-white text-primary hover:bg-white/90">
-                <Mic className="w-5 h-5 mr-2" />
-                Start Voice Chat
-              </Button>
-            </Link>
-            <Button variant="outline" size="lg" className="w-full sm:w-auto bg-white/10 border-white/20 text-white hover:bg-white/20">
-              Learn More
-            </Button>
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            {/* Left Column - Text Content */}
+            <div className="text-center lg:text-left text-white">
+              <Badge variant="secondary" className="mb-6 text-primary bg-white/20">
+                AI-Powered Conversations
+              </Badge>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
+                Chat with AI William
+              </h1>
+              <p className="text-lg md:text-xl mb-8 text-white/90">
+                Experience intelligent conversations with William's AI twin. Get instant insights on consulting, 
+                partnerships, and business opportunities through natural voice interactions.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                <Link to="/chat">
+                  <Button size="lg" className="w-full sm:w-auto shadow-glow bg-white text-primary hover:bg-white/90">
+                    <Mic className="w-5 h-5 mr-2" />
+                    Start Voice Chat
+                  </Button>
+                </Link>
+                <Button variant="outline" size="lg" className="w-full sm:w-auto bg-white/10 border-white/20 text-white hover:bg-white/20">
+                  Learn More
+                </Button>
+              </div>
+            </div>
+            
+            {/* Right Column - William's Image */}
+            <div className="flex justify-center lg:justify-end">
+              <div className="relative">
+                <div className="w-80 h-80 rounded-full overflow-hidden shadow-elegant bg-white/10 backdrop-blur-sm border border-white/20">
+                  <img 
+                    src={williamHeadshot} 
+                    alt="William White - AI Consultant and Business Expert"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="absolute -bottom-4 -right-4 w-16 h-16 rounded-full bg-primary flex items-center justify-center shadow-glow">
+                  <Brain className="w-8 h-8 text-white" />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
