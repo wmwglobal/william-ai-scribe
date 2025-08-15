@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { AudioPlayer, AudioRecorder, audioToBase64 } from '@/lib/audioUtils';
 import type { CreateSessionResponse, AgentReplyResponse } from '@/lib/types';
 
-export function useVoiceChat() {
+export function useVoiceChat(audioEnabled: boolean = true) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -93,8 +93,8 @@ export function useVoiceChat() {
         setLeadScore(response.extract.lead_score || 0);
       }
 
-      // Play TTS audio if available
-      if (response.audio_base64) {
+      // Play TTS audio if available and audio is enabled
+      if (response.audio_base64 && audioEnabled) {
         await audioPlayer.playAudio(response.audio_base64);
       }
 

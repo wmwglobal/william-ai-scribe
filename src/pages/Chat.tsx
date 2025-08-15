@@ -18,6 +18,7 @@ const Chat = () => {
   const [sessionStarted, setSessionStarted] = useState(false);
   const [textMessage, setTextMessage] = useState('');
   const [consent, setConsent] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(true);
   const [selectedPersonality, setSelectedPersonality] = useState<Personality>(getDefaultPersonality());
   const [selectedModel, setSelectedModel] = useState<GroqModel>(getDefaultModel());
   
@@ -34,7 +35,7 @@ const Chat = () => {
     stopRecording,
     stopSpeaking,
     sendTextMessage
-  } = useVoiceChat();
+  } = useVoiceChat(audioEnabled);
 
   const startSession = async () => {
     try {
@@ -147,6 +148,15 @@ const Chat = () => {
               onPersonalityChange={setSelectedPersonality}
               disabled={sessionStarted}
             />
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setAudioEnabled(!audioEnabled)}
+              className="flex items-center gap-2"
+            >
+              {audioEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+              <span className="hidden sm:inline">{audioEnabled ? 'Audio On' : 'Audio Off'}</span>
+            </Button>
             {sessionStarted && (
               <Button variant="outline" size="sm" onClick={handleEscalate}>
                 Human Please
