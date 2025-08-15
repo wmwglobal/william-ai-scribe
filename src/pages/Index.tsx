@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MessageCircle, Users, TrendingUp, Shield, Mic, Brain, Zap } from 'lucide-react';
-import williamHeadshot from '@/assets/william-headshot.jpg';
 
 const Index = () => {
   return (
@@ -64,7 +63,7 @@ const Index = () => {
               <div className="relative">
                 <div className="w-80 h-80 rounded-full overflow-hidden shadow-elegant bg-white/10 backdrop-blur-sm border border-white/20">
                   <img 
-                    src={williamHeadshot} 
+                    src="/lovable-uploads/2e29baeb-3566-403b-86f3-1d1cffcd52ed.png" 
                     alt="William White - AI Consultant and Business Expert"
                     className="w-full h-full object-cover"
                   />
