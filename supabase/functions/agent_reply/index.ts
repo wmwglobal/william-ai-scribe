@@ -35,64 +35,21 @@ RESPONSE STYLE:
 - Reference specific outcomes when relevant
 - Guide toward concrete next steps`;
 
-async function callOpenAI(messages: any[], sessionId: string) {
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${llmApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        ...messages
-      ],
-      functions: [
-        {
-          name: 'save_extract',
-          description: 'Save conversation analysis and lead scoring data',
-          parameters: {
-            type: 'object',
-            properties: {
-              intent: {
-                type: 'string',
-                enum: ['consulting_inquiry', 'collaboration', 'media_request', 'speaking_request', 'job_opportunity', 'product_feedback', 'partnership_vendor', 'advice_request', 'supporter_fan']
-              },
-              confidence: { type: 'number', minimum: 0, maximum: 1 },
-              entities: {
-                type: 'object',
-                properties: {
-                  org_name: { type: 'string' },
-                  person_name: { type: 'string' },
-                  role: { type: 'string' },
-                  budget_range: { type: 'string' },
-                  timeline: { type: 'string' },
-                  use_case: { type: 'string' },
-                  contact_email: { type: 'string' }
-                }
-              },
-              followup_actions: {
-                type: 'array',
-                items: { type: 'string' }
-              },
-              lead_score: { type: 'number', minimum: 0, maximum: 100 }
-            },
-            required: ['intent', 'confidence']
-          }
-        }
-      ],
-      function_call: 'auto',
-      temperature: 0.7,
-      max_tokens: 300
-    })
+async function callGroqChat(messages: any[], model: string = 'llama-3.3-70b-versatile', systemPrompt: string, sessionId: string, supabase: any) {
+  const response = await supabase.functions.invoke('groq_chat', {
+    body: {
+      messages,
+      model,
+      systemPrompt,
+      session_id: sessionId
+    }
   });
 
-  if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.status}`);
+  if (response.error) {
+    throw new Error(`Groq API error: ${response.error.message}`);
   }
 
-  return await response.json();
+  return response.data;
 }
 
 serve(async (req) => {
@@ -143,10 +100,9 @@ serve(async (req) => {
       content: u.text
     }));
 
-    // Call OpenAI
-    const completion = await callOpenAI(messages, session_id);
-    const reply = completion.choices[0].message;
-    const agentText = reply.content;
+    // Call Groq
+    const groqResponse = await callGroqChat(messages, 'llama-3.3-70b-versatile', SYSTEM_PROMPT, session_id, supabase);
+    const agentText = groqResponse.text;
 
     // Save agent utterance
     const { data: agentUtterance } = await supabase
@@ -159,36 +115,9 @@ serve(async (req) => {
       .select('id')
       .single();
 
-    // Process function call if present
+    // For now, skip function calling since Groq response structure is different
+    // TODO: Implement intent detection and lead scoring separately
     let extractData = null;
-    if (reply.function_call?.name === 'save_extract') {
-      try {
-        const functionArgs = JSON.parse(reply.function_call.arguments);
-        extractData = functionArgs;
-
-        // Save extract to database
-        await supabase.from('extracts').insert({
-          session_id,
-          utterance_id: agentUtterance?.id,
-          intent: extractData.intent,
-          confidence: extractData.confidence,
-          entities: extractData.entities || {},
-          followup_actions: extractData.followup_actions || [],
-          lead_score: extractData.lead_score || 0
-        });
-
-        // Update session with latest scoring
-        await supabase.from('sessions').update({
-          final_intent: extractData.intent,
-          lead_score: extractData.lead_score || 0
-        }).eq('id', session_id);
-
-        console.log(`Extracted data for session ${session_id}:`, extractData);
-
-      } catch (error) {
-        console.error('Error processing function call:', error);
-      }
-    }
 
     // Generate TTS audio
     let audioBase64 = null;

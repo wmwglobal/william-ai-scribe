@@ -3,19 +3,19 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ChevronDown, Brain } from 'lucide-react';
-import { WILLIAM_PERSONALITIES, Personality } from '@/lib/models';
+import { GROQ_MODELS, GroqModel } from '@/lib/models';
 
-interface PersonalitySelectorProps {
-  selectedPersonality: Personality;
-  onPersonalityChange: (personality: Personality) => void;
+interface ModelSelectorProps {
+  selectedModel: GroqModel;
+  onModelChange: (model: GroqModel) => void;
   disabled?: boolean;
 }
 
-export const PersonalitySelector = ({ 
-  selectedPersonality, 
-  onPersonalityChange, 
+export const ModelSelector = ({ 
+  selectedModel, 
+  onModelChange, 
   disabled = false 
-}: PersonalitySelectorProps) => {
+}: ModelSelectorProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -27,9 +27,9 @@ export const PersonalitySelector = ({
         disabled={disabled}
         className="flex items-center gap-2"
       >
-        <div className={`w-3 h-3 rounded-full bg-gradient-to-r ${selectedPersonality.color}`} />
-        <span className="hidden sm:inline">{selectedPersonality.name}</span>
-        <span className="sm:hidden">Brain</span>
+        <div className={`w-3 h-3 rounded-full bg-gradient-to-r ${selectedModel.color}`} />
+        <span className="hidden sm:inline">{selectedModel.name}</span>
+        <span className="sm:hidden">Model</span>
         <ChevronDown className="w-4 h-4" />
       </Button>
 
@@ -43,33 +43,33 @@ export const PersonalitySelector = ({
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center gap-2 mb-3">
                 <Brain className="w-4 h-4" />
-                <span className="font-medium">Choose William's Brain</span>
+                <span className="font-medium">Choose Model Brain</span>
               </div>
               
-              {WILLIAM_PERSONALITIES.map((personality) => (
+              {GROQ_MODELS.map((model) => (
                 <button
-                  key={personality.id}
+                  key={model.id}
                   onClick={() => {
-                    onPersonalityChange(personality);
+                    onModelChange(model);
                     setIsOpen(false);
                   }}
                   className={`w-full text-left p-3 rounded-lg border transition-all ${
-                    selectedPersonality.id === personality.id
+                    selectedModel.id === model.id
                       ? 'border-primary bg-primary/5'
                       : 'border-border hover:border-primary/50 hover:bg-muted/50'
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`w-4 h-4 rounded-full bg-gradient-to-r ${personality.color} mt-0.5`} />
+                    <div className={`w-4 h-4 rounded-full bg-gradient-to-r ${model.color} mt-0.5`} />
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium">{personality.name}</span>
+                        <span className="font-medium">{model.name}</span>
                         <Badge variant="secondary" className="text-xs">
-                          Personality
+                          {model.contextLength}
                         </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {personality.description}
+                        {model.description}
                       </p>
                     </div>
                   </div>

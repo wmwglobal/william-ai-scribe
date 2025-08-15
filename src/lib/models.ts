@@ -1,19 +1,63 @@
-export interface ModelPersonality {
+export interface GroqModel {
   id: string;
   name: string;
   description: string;
-  model: string;
+  contextLength: string;
+  color: string;
+}
+
+export interface Personality {
+  id: string;
+  name: string;
+  description: string;
   systemPrompt: string;
   voiceId?: string;
   color: string;
 }
 
-export const WILLIAM_PERSONALITIES: ModelPersonality[] = [
+export const GROQ_MODELS: GroqModel[] = [
+  {
+    id: 'llama-3.3-70b-versatile',
+    name: 'GPT OSS 120B 128k',
+    description: 'High-performance open source model with 128k context',
+    contextLength: '128k',
+    color: 'from-blue-500 to-purple-600'
+  },
+  {
+    id: 'llama-3.1-70b-versatile',
+    name: 'Llama 3.1 70B',
+    description: 'Versatile large language model for complex reasoning',
+    contextLength: '128k',
+    color: 'from-green-500 to-teal-600'
+  },
+  {
+    id: 'llama-3.1-8b-instant',
+    name: 'Llama 3.1 8B Instant',
+    description: 'Fast and efficient model for quick responses',
+    contextLength: '128k',
+    color: 'from-orange-500 to-red-600'
+  },
+  {
+    id: 'mixtral-8x7b-32768',
+    name: 'Mixtral 8x7B',
+    description: 'Mixture of experts model for diverse tasks',
+    contextLength: '32k',
+    color: 'from-purple-500 to-pink-600'
+  },
+  {
+    id: 'gemma2-9b-it',
+    name: 'Gemma2 9B',
+    description: 'Google\'s efficient instruction-tuned model',
+    contextLength: '8k',
+    color: 'from-cyan-500 to-blue-600'
+  }
+];
+
+export const WILLIAM_PERSONALITIES: Personality[] = [
   {
     id: 'entrepreneur',
-    name: 'Entrepreneur William',
+    name: 'Entrepreneur',
     description: 'Strategic business consultant focused on growth and innovation',
-    model: 'llama-3.1-70b-versatile',
     systemPrompt: `You are William MacDonald White's AI twin in "Entrepreneur" mode. You're an expert business consultant who has worked with SiriusXM/Pandora on large-scale recommendation systems. You focus on:
 
 - Strategic business growth and partnerships
@@ -28,9 +72,8 @@ Be confident, strategic, and focus on concrete business outcomes. Reference your
   },
   {
     id: 'technical',
-    name: 'Technical William',
+    name: 'Technical Expert',
     description: 'Deep technical expert in AI/ML, data science, and system architecture',
-    model: 'llama-3.1-8b-instant',
     systemPrompt: `You are William MacDonald White's AI twin in "Technical" mode. You're a hands-on technical expert with deep experience in:
 
 - Machine learning and AI system design
@@ -45,9 +88,8 @@ Be precise, technically accurate, and dive deep into implementation details. Ref
   },
   {
     id: 'creative',
-    name: 'Creative William',
+    name: 'Creative Innovator',
     description: 'Innovative thinker exploring cutting-edge ideas and experimental concepts',
-    model: 'mixtral-8x7b-32768',
     systemPrompt: `You are William MacDonald White's AI twin in "Creative" mode. You're an innovative thinker who explores:
 
 - Experimental AI applications and bleeding-edge concepts
@@ -62,9 +104,8 @@ Be imaginative, curious, and willing to explore wild ideas. Think outside the bo
   },
   {
     id: 'advisor',
-    name: 'Advisor William',
+    name: 'Wise Advisor',
     description: 'Wise mentor providing guidance on career, life, and decision-making',
-    model: 'llama-3.1-70b-versatile',
     systemPrompt: `You are William MacDonald White's AI twin in "Advisor" mode. You're a thoughtful mentor who provides guidance on:
 
 - Career development and professional growth
@@ -79,10 +120,18 @@ Be empathetic, supportive, and provide balanced perspectives. Ask clarifying que
   }
 ];
 
-export const getPersonalityById = (id: string): ModelPersonality | undefined => {
+export const getModelById = (id: string): GroqModel | undefined => {
+  return GROQ_MODELS.find(m => m.id === id);
+};
+
+export const getPersonalityById = (id: string): Personality | undefined => {
   return WILLIAM_PERSONALITIES.find(p => p.id === id);
 };
 
-export const getDefaultPersonality = (): ModelPersonality => {
+export const getDefaultModel = (): GroqModel => {
+  return GROQ_MODELS[0]; // GPT OSS 120B 128k by default
+};
+
+export const getDefaultPersonality = (): Personality => {
   return WILLIAM_PERSONALITIES[0]; // Entrepreneur by default
 };

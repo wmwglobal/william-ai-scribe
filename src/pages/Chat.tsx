@@ -9,7 +9,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { useVoiceChat } from '@/hooks/useVoiceChat';
 import { getScoreBadgeVariant } from '@/lib/leadScore';
 import { PersonalitySelector } from '@/components/PersonalitySelector';
-import { WILLIAM_PERSONALITIES, ModelPersonality, getDefaultPersonality } from '@/lib/models';
+import { ModelSelector } from '@/components/ModelSelector';
+import { WILLIAM_PERSONALITIES, Personality, GroqModel, getDefaultPersonality, getDefaultModel } from '@/lib/models';
 
 const Chat = () => {
   const navigate = useNavigate();
@@ -17,7 +18,8 @@ const Chat = () => {
   const [sessionStarted, setSessionStarted] = useState(false);
   const [textMessage, setTextMessage] = useState('');
   const [consent, setConsent] = useState(false);
-  const [selectedPersonality, setSelectedPersonality] = useState<ModelPersonality>(getDefaultPersonality());
+  const [selectedPersonality, setSelectedPersonality] = useState<Personality>(getDefaultPersonality());
+  const [selectedModel, setSelectedModel] = useState<GroqModel>(getDefaultModel());
   
   const {
     sessionId,
@@ -117,8 +119,8 @@ const Chat = () => {
                    isSpeaking ? "Speaking..." : 
                    isRecording ? "Listening..." : "Ready"}
                 </p>
-                <div className={`w-2 h-2 rounded-full ${selectedPersonality.color} bg-gradient-to-r`} />
-                <span className="text-xs text-muted-foreground">{selectedPersonality.name}</span>
+                <div className={`w-2 h-2 rounded-full ${selectedModel.color} bg-gradient-to-r`} />
+                <span className="text-xs text-muted-foreground">{selectedModel.name} • {selectedPersonality.name}</span>
               </div>
             </div>
           </div>
@@ -134,6 +136,11 @@ const Chat = () => {
                 Score: {leadScore}
               </Badge>
             )}
+            <ModelSelector
+              selectedModel={selectedModel}
+              onModelChange={setSelectedModel}
+              disabled={sessionStarted}
+            />
             <PersonalitySelector
               selectedPersonality={selectedPersonality}
               onPersonalityChange={setSelectedPersonality}
