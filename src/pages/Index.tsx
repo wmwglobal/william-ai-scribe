@@ -65,7 +65,8 @@ const Index = () => {
                   <img 
                     src="/lovable-uploads/2e29baeb-3566-403b-86f3-1d1cffcd52ed.png" 
                     alt="William White - AI Consultant and Business Expert"
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover object-center"
+                    style={{ objectPosition: '50% 20%' }}
                   />
                 </div>
                 <div className="absolute -bottom-4 -right-4 w-16 h-16 rounded-full bg-primary flex items-center justify-center shadow-glow">
