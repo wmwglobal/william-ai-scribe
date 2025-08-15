@@ -8,6 +8,8 @@ export class AudioPlayer {
   async playAudio(base64Audio: string): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
+        console.log('Attempting to play audio, base64 length:', base64Audio.length);
+        
         // Convert base64 to blob
         const binaryString = atob(base64Audio);
         const bytes = new Uint8Array(binaryString.length);
@@ -20,8 +22,11 @@ export class AudioPlayer {
         
         const audio = new Audio(audioUrl);
         
+        // Set volume to ensure it's audible
+        audio.volume = 1.0;
+        
         audio.onloadeddata = () => {
-          console.log('Audio loaded successfully');
+          console.log('Audio loaded successfully, duration:', audio.duration);
         };
         
         audio.onplay = () => {
@@ -49,15 +54,25 @@ export class AudioPlayer {
           reject(new Error('Audio playback failed'));
         };
         
-        // Start playback
-        audio.play().catch(error => {
-          console.error('Error starting audio playback:', error);
-          this.isPlaying = false;
-          this.currentAudio = null;
-          this.onPlayingChange?.(false);
-          URL.revokeObjectURL(audioUrl);
-          reject(error);
-        });
+        // Start playback with user interaction check
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          playPromise.then(() => {
+            console.log('Audio playback started successfully');
+          }).catch(error => {
+            console.error('Error starting audio playback:', error);
+            if (error.name === 'NotAllowedError') {
+              console.error('Audio autoplay blocked - user interaction required');
+              reject(new Error('Audio autoplay blocked. Please interact with the page first.'));
+            } else {
+              this.isPlaying = false;
+              this.currentAudio = null;
+              this.onPlayingChange?.(false);
+              URL.revokeObjectURL(audioUrl);
+              reject(error);
+            }
+          });
+        }
         
       } catch (error) {
         console.error('Error processing audio:', error);
