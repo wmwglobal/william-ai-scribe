@@ -166,7 +166,23 @@ const Chat = () => {
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => setAudioEnabled(!audioEnabled)}
+              onClick={async () => {
+                if (!audioEnabled && !sessionStarted) {
+                  // If turning audio on and no session exists, start one automatically
+                  try {
+                    await startSession();
+                    setAudioEnabled(true);
+                  } catch (error) {
+                    toast({
+                      title: "Session Error",
+                      description: "Failed to start session. Please try again.",
+                      variant: "destructive",
+                    });
+                  }
+                } else {
+                  setAudioEnabled(!audioEnabled);
+                }
+              }}
               className="flex items-center gap-2"
             >
               {audioEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
