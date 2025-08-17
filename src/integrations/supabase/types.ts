@@ -44,6 +44,13 @@ export type Database = {
             referencedRelation: "sessions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_events_session_id"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
         ]
       }
       extracts: {
@@ -90,6 +97,20 @@ export type Database = {
           },
           {
             foreignKeyName: "extracts_utterance_id_fkey"
+            columns: ["utterance_id"]
+            isOneToOne: false
+            referencedRelation: "utterances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_extracts_session_id"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_extracts_utterance_id"
             columns: ["utterance_id"]
             isOneToOne: false
             referencedRelation: "utterances"
@@ -246,6 +267,7 @@ export type Database = {
           id: string
           lead_score: number | null
           notes: string | null
+          session_secret: string | null
           started_at: string | null
           updated_at: string | null
           visitor_id: string | null
@@ -263,6 +285,7 @@ export type Database = {
           id?: string
           lead_score?: number | null
           notes?: string | null
+          session_secret?: string | null
           started_at?: string | null
           updated_at?: string | null
           visitor_id?: string | null
@@ -280,6 +303,7 @@ export type Database = {
           id?: string
           lead_score?: number | null
           notes?: string | null
+          session_secret?: string | null
           started_at?: string | null
           updated_at?: string | null
           visitor_id?: string | null
@@ -309,6 +333,13 @@ export type Database = {
           session_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_summaries_session_id"
+            columns: ["session_id"]
+            isOneToOne: true
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "summaries_session_id_fkey"
             columns: ["session_id"]
@@ -348,6 +379,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_utterances_session_id"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "utterances_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
@@ -364,6 +402,10 @@ export type Database = {
       binary_quantize: {
         Args: { "": string } | { "": unknown }
         Returns: unknown
+      }
+      get_current_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       halfvec_avg: {
         Args: { "": number[] }
