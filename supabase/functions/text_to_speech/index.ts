@@ -35,8 +35,8 @@ serve(async (req) => {
 
     console.log(`Generating speech for session ${session_id}:`, text.substring(0, 100));
 
-    // Use Brian voice (professional male voice) for William MacDonald White
-    const voiceId = voice_id || 'nPczCjzI2devNBz1zQrb'; // Brian voice - professional male
+    // Use your custom ElevenLabs voice clone for William MacDonald White
+    const voiceId = voice_id || 'kEvELaJKlvVX03azWDUC'; // Your custom voice clone
     
     const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
       method: 'POST',
