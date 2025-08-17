@@ -28,14 +28,18 @@ serve(async (req) => {
 
     console.log('Creating session for visitor:', visitor_id);
 
+    // Generate session secret for authorization
+    const session_secret = crypto.randomUUID();
+
     const { data, error } = await supabase
       .from('sessions')
       .insert({ 
         visitor_id: visitor_id || crypto.randomUUID(), 
         consent,
-        channel: 'web'
+        channel: 'web',
+        session_secret
       })
-      .select('id')
+      .select('id, session_secret')
       .single();
 
     if (error) {
@@ -61,6 +65,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ 
       session_id: data.id, 
+      session_secret: data.session_secret,
       realtime_token 
     }), {
       headers: { ...corsHeaders, 'content-type': 'application/json' },

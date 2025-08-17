@@ -62,18 +62,34 @@ serve(async (req) => {
   }
 
   try {
-    const { session_id, user_message } = await req.json();
+    const { session_id, user_message, session_secret } = await req.json();
     
-    if (!session_id || !user_message) {
-      return new Response(JSON.stringify({ error: 'session_id and user_message required' }), {
+    if (!session_id || !user_message || !session_secret) {
+      return new Response(JSON.stringify({ error: 'session_id, user_message, and session_secret required' }), {
         status: 400,
         headers: { ...corsHeaders, 'content-type': 'application/json' }
       });
     }
 
     const supabase = createClient(supabaseUrl, serviceRole);
+    
+    // Verify session authorization
+    const { data: session, error: sessionError } = await supabase
+      .from('sessions')
+      .select('id')
+      .eq('id', session_id)
+      .eq('session_secret', session_secret)
+      .single();
 
-    console.log(`Processing message for session ${session_id}:`, user_message);
+    if (sessionError || !session) {
+      console.error('Invalid session authorization:', sessionError?.message);
+      return new Response(JSON.stringify({ error: 'Invalid session' }), { 
+        status: 401,
+        headers: { ...corsHeaders, 'content-type': 'application/json' }
+      });
+    }
+
+    console.log(`Processing message for session ${session_id}:`, user_message?.substring(0, 50) + '...');
 
     // Save user utterance
     const { data: userUtterance } = await supabase
@@ -119,26 +135,20 @@ serve(async (req) => {
     // TODO: Implement intent detection and lead scoring separately
     let extractData = null;
 
-    // Generate TTS audio
+    // Generate TTS audio using supabase client instead of manual fetch
     let audioBase64 = null;
     try {
-      const ttsResponse = await fetch(`${supabaseUrl}/functions/v1/text_to_speech`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${serviceRole}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+      const { data: ttsData, error: ttsError } = await supabase.functions.invoke('text_to_speech', {
+        body: {
           text: agentText,
           session_id: session_id
-        })
+        }
       });
 
-      if (ttsResponse.ok) {
-        const ttsData = await ttsResponse.json();
+      if (!ttsError && ttsData) {
         audioBase64 = ttsData.audio_base64;
       } else {
-        console.error('TTS generation failed:', await ttsResponse.text());
+        console.error('TTS generation failed:', ttsError?.message);
       }
     } catch (error) {
       console.error('TTS generation error:', error);

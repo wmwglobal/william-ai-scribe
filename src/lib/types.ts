@@ -98,6 +98,7 @@ export interface SessionEvent {
 // API Response types
 export interface CreateSessionResponse {
   session_id: string;
+  session_secret: string;
   realtime_token: string;
 }
 

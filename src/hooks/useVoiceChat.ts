@@ -5,6 +5,7 @@ import type { CreateSessionResponse, AgentReplyResponse } from '@/lib/types';
 
 export function useVoiceChat(audioEnabled: boolean = true) {
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionSecret, setSessionSecret] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
@@ -31,6 +32,7 @@ export function useVoiceChat(audioEnabled: boolean = true) {
 
       const response = data as CreateSessionResponse;
       setSessionId(response.session_id);
+      setSessionSecret(response.session_secret);
       return response.session_id;
     } catch (error) {
       console.error('Error creating session:', error);
@@ -61,7 +63,7 @@ export function useVoiceChat(audioEnabled: boolean = true) {
   }
 
   async function sendToAgent(userMessage: string) {
-    if (!sessionId) return;
+    if (!sessionId || !sessionSecret) return;
 
     try {
       // Add a natural delay before showing typing indicator (1-4 seconds)
@@ -78,7 +80,8 @@ export function useVoiceChat(audioEnabled: boolean = true) {
         supabase.functions.invoke('agent_reply', {
           body: {
             session_id: sessionId,
-            user_message: userMessage
+            user_message: userMessage,
+            session_secret: sessionSecret
           }
         }),
         new Promise(resolve => setTimeout(resolve, typingDuration))
@@ -131,7 +134,7 @@ export function useVoiceChat(audioEnabled: boolean = true) {
   }
 
   async function sendTextMessage(message: string) {
-    if (!sessionId) return;
+    if (!sessionId || !sessionSecret) return;
     
     // Add to transcript
     setTranscript(prev => [...prev, {
