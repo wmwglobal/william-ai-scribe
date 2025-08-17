@@ -106,7 +106,14 @@ export function useVoiceChat(audioEnabled: boolean = true) {
 
       // Play TTS audio if available and audio is enabled
       if (agentResponse.audio_base64 && audioEnabled) {
+        console.log('🎵 useVoiceChat: Playing TTS audio, length:', agentResponse.audio_base64.length);
         await audioPlayer.playAudio(agentResponse.audio_base64);
+      } else {
+        console.log('🎵 useVoiceChat: No audio to play', {
+          hasAudio: !!agentResponse.audio_base64,
+          audioEnabled,
+          audioLength: agentResponse.audio_base64?.length || 0
+        });
       }
 
     } catch (error) {

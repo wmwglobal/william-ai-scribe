@@ -8,7 +8,9 @@ export class AudioPlayer {
   async playAudio(base64Audio: string): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
-        console.log('Attempting to play audio, base64 length:', base64Audio.length);
+        console.log('🎵 AudioPlayer: Attempting to play audio');
+        console.log('🎵 Base64 audio length:', base64Audio.length);
+        console.log('🎵 First 50 chars:', base64Audio.substring(0, 50));
         
         // Convert base64 to blob
         const binaryString = atob(base64Audio);
@@ -26,14 +28,15 @@ export class AudioPlayer {
         audio.volume = 1.0;
         
         audio.onloadeddata = () => {
-          console.log('Audio loaded successfully, duration:', audio.duration);
+          console.log('🎵 Audio loaded successfully, duration:', audio.duration, 'seconds');
+          console.log('🎵 Audio ready state:', audio.readyState);
         };
         
         audio.onplay = () => {
           this.isPlaying = true;
           this.currentAudio = audio;
           this.onPlayingChange?.(true);
-          console.log('Audio playback started');
+          console.log('🎵 Audio playback started - you should hear sound now!');
         };
         
         audio.onended = () => {
@@ -58,7 +61,7 @@ export class AudioPlayer {
         const playPromise = audio.play();
         if (playPromise !== undefined) {
           playPromise.then(() => {
-            console.log('Audio playback started successfully');
+            console.log('🎵 Audio playback promise resolved successfully!');
           }).catch(error => {
             console.error('Error starting audio playback:', error);
             if (error.name === 'NotAllowedError') {

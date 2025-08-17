@@ -41,8 +41,20 @@ const Chat = () => {
 
   const startSession = async () => {
     try {
-      // Request microphone permissions
+      // Request microphone permissions and test audio context
       await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Test if audio can play (important for autoplay restrictions)
+      try {
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        if (audioContext.state === 'suspended') {
+          console.log('🎵 Audio context suspended - will resume on user interaction');
+          await audioContext.resume();
+        }
+        console.log('🎵 Audio context state:', audioContext.state);
+      } catch (audioError) {
+        console.warn('🎵 Audio context setup warning:', audioError);
+      }
       
       // Create session with consent
       const newSessionId = await createSession(consent);
@@ -51,7 +63,7 @@ const Chat = () => {
       
       toast({
         title: "Session Started",
-        description: "AI William is ready to chat with you!",
+        description: "AI William is ready to chat with you! Audio should work now.",
       });
     } catch (error) {
       toast({
