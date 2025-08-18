@@ -261,6 +261,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           cta_chosen: string | null
+          current_mode: string | null
           email: string | null
           ended_at: string | null
           final_intent: string | null
@@ -279,6 +280,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           cta_chosen?: string | null
+          current_mode?: string | null
           email?: string | null
           ended_at?: string | null
           final_intent?: string | null
@@ -297,6 +299,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           cta_chosen?: string | null
+          current_mode?: string | null
           email?: string | null
           ended_at?: string | null
           final_intent?: string | null

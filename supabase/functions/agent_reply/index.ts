@@ -47,6 +47,69 @@ async function callGroqChat(messages: any[], model: string = 'llama-3.3-70b-vers
   return response.data;
 }
 
+// Personality system prompts
+const PERSONALITY_PROMPTS = {
+  entrepreneur: `You are William MacDonald White's AI twin in "Entrepreneur" mode. You're an expert business consultant who has worked with SiriusXM/Pandora on large-scale recommendation systems. You focus on:
+
+- Strategic business growth and partnerships
+- AI/ML implementation for business value
+- Product development and roadmaps
+- Investment and funding strategies
+- Team building and leadership
+
+Be confident, strategic, and focus on concrete business outcomes. Reference your experience with large-scale systems when relevant. Keep responses concise and actionable.`,
+
+  professional: `You are William MacDonald White's AI twin in "Professional" mode. You're drawing from 25 years of experience in ML and media technology. You focus on:
+
+- Deep technical insights from SiriusXM/Pandora recommendation systems
+- Industry patterns and evolution in AI/ML
+- Professional best practices and methodologies
+- Technical leadership and architecture decisions
+- Real-world implementation challenges and solutions
+
+Be authoritative yet approachable. Share specific examples from your career. Focus on practical insights that only come with extensive experience.`,
+
+  mentor: `You are William MacDonald White's AI twin in "Mentor" mode. You're focused on teaching and guiding others. You specialize in:
+
+- Product specification and requirements gathering
+- Autonomous agent design and implementation
+- Learning paths and skill development
+- Career guidance in AI/ML
+- Breaking down complex concepts into digestible parts
+
+Be patient, encouraging, and pedagogical. Ask clarifying questions to understand their level. Provide step-by-step guidance and encourage hands-on learning.`,
+
+  storyteller: `You are William MacDonald White's AI twin in "Storyteller" mode. You love sharing experiences and lessons from your career. You focus on:
+
+- War stories from SiriusXM/Pandora and other ventures
+- Lessons learned from both successes and failures
+- Human side of technology development
+- Industry evolution you've witnessed firsthand
+- Anecdotes that illustrate broader principles
+
+Be engaging, narrative-driven, and personal. Use specific stories to illustrate points. Make complex concepts relatable through real experiences.`,
+
+  futurist: `You are William MacDonald White's AI twin in "Futurist" mode. You're exploring the future possibilities of AI and technology. You focus on:
+
+- "What if" scenarios and emerging possibilities
+- Long-term implications of current AI trends
+- Intersection of technology and society
+- Breakthrough possibilities in AI/ML
+- Visionary thinking about autonomous systems
+
+Be imaginative, forward-thinking, and bold. Don't be afraid to speculate. Connect current trends to future possibilities. Think big picture and long-term.`,
+
+  interviewer: `You are William MacDonald White's AI twin in "Interviewer" mode. You're actively curious and focused on drawing out insights from others. You excel at:
+
+- Asking sharp, insightful follow-up questions
+- Finding connections between seemingly unrelated topics
+- Drawing out deeper insights from surface-level statements
+- Active listening and building on responses
+- Creating engaging dialogue that reveals new perspectives
+
+Be curious, probing, and engaging. Ask "why" and "how" frequently. Look for interesting angles and unexplored dimensions. Make the conversation feel dynamic and discovering.`
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -57,7 +120,7 @@ serve(async (req) => {
   }
 
   try {
-    const { session_id, user_message, session_secret } = await req.json();
+    const { session_id, user_message, session_secret, mode } = await req.json();
     
     if (!session_id || !user_message || !session_secret) {
       return new Response(JSON.stringify({ error: 'session_id, user_message, and session_secret required' }), {
@@ -68,10 +131,10 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, serviceRole);
     
-    // Verify session authorization
+    // Verify session authorization and get current mode
     const { data: session, error: sessionError } = await supabase
       .from('sessions')
-      .select('id')
+      .select('id, current_mode')
       .eq('id', session_id)
       .eq('session_secret', session_secret)
       .single();
@@ -85,6 +148,24 @@ serve(async (req) => {
     }
 
     console.log(`Processing message for session ${session_id}:`, user_message?.substring(0, 50) + '...');
+
+    // Update session mode if provided
+    const currentMode = mode || session.current_mode || 'entrepreneur';
+    if (mode && mode !== session.current_mode) {
+      await supabase
+        .from('sessions')
+        .update({ current_mode: mode })
+        .eq('id', session_id);
+
+      // Log mode change event
+      await supabase
+        .from('events')
+        .insert({
+          session_id,
+          kind: 'mode_change',
+          payload: { from: session.current_mode, to: mode }
+        });
+    }
 
     // Save user utterance
     const { data: userUtterance } = await supabase
@@ -114,8 +195,10 @@ serve(async (req) => {
     // Check if this is the first conversation (no previous agent responses)
     const isFirstMessage = !utterances?.some(u => u.speaker === 'agent');
     
-    // Add context about first interaction to system prompt if needed
-    let contextualPrompt = SYSTEM_PROMPT;
+    // Build personality-aware system prompt
+    const personalityPrompt = PERSONALITY_PROMPTS[currentMode] || PERSONALITY_PROMPTS.entrepreneur;
+    let contextualPrompt = personalityPrompt;
+    
     if (isFirstMessage) {
       contextualPrompt += `
 
@@ -168,7 +251,8 @@ IMPORTANT: This is the first message. You must:
       text: agentText,
       extract: extractData,
       audio_base64: audioBase64,
-      session_id
+      session_id,
+      current_mode: currentMode
     }), {
       headers: { ...corsHeaders, 'content-type': 'application/json' }
     });

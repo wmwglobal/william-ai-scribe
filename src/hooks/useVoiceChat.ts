@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { AudioPlayer, AudioRecorder, audioToBase64 } from '@/lib/audioUtils';
 import type { CreateSessionResponse, AgentReplyResponse } from '@/lib/types';
 
-export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'distil-whisper-large-v3-en') {
+export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'distil-whisper-large-v3-en', personality?: any) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionSecret, setSessionSecret] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -106,7 +106,8 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
           body: {
             session_id: sessionId,
             user_message: userMessage,
-            session_secret: sessionSecret
+            session_secret: sessionSecret,
+            mode: personality?.id
           }
         }),
         new Promise(resolve => setTimeout(resolve, typingDuration))

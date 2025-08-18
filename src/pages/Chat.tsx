@@ -11,6 +11,7 @@ import { useVoiceChat } from '@/hooks/useVoiceChat';
 import { getScoreBadgeVariant } from '@/lib/leadScore';
 import { PersonalitySelector } from '@/components/PersonalitySelector';
 import { ModelSelector } from '@/components/ModelSelector';
+import { MoodRing } from '@/components/MoodRing';
 import { getSessionAvatar } from '@/lib/avatarUtils';
 import { WILLIAM_PERSONALITIES, Personality, GroqModel, getDefaultPersonality, getDefaultModel } from '@/lib/models';
 
@@ -42,7 +43,7 @@ const Chat = () => {
     stopRecording,
     stopSpeaking,
     sendTextMessage
-  } = useVoiceChat(audioEnabled, selectedAsrModel);
+  } = useVoiceChat(audioEnabled, selectedAsrModel, selectedPersonality);
 
   const startSession = async () => {
     try {
@@ -226,8 +227,9 @@ const Chat = () => {
                   {!sessionStarted ? "Ready to start" : 
                    isSpeaking ? "Speaking..." : "Ready"}
                 </p>
+                <MoodRing currentMode={selectedPersonality.id} />
                 <div className={`w-1.5 h-1.5 rounded-full ${selectedModel.color} bg-gradient-to-r`} />
-                <span className="text-xs text-muted-foreground">{selectedModel.name} • {selectedPersonality.name}</span>
+                <span className="text-xs text-muted-foreground">{selectedModel.name}</span>
               </div>
             </div>
           </div>
