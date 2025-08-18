@@ -2,3 +2,12 @@ project_id = "suyervjawrmbyyxetblv"
 
 [functions.speech_to_text_groq]
 verify_jwt = false
+
+[functions.groq_chat]
+verify_jwt = true
+
+[functions.text_to_speech]
+verify_jwt = true
+
+[functions.agent_reply]
+verify_jwt = false

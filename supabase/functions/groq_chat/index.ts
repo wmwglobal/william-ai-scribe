@@ -1,17 +1,37 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
+// Allowed origins for production security
+const ALLOWED_ORIGINS = [
+  'https://lovable.dev',
+  'http://localhost:5173',
+  'http://localhost:3000'
+];
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': '*', // Will be replaced with origin validation
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req) => {
+  // Origin validation for security
+  const origin = req.headers.get('origin');
+  const isAllowedOrigin = !origin || ALLOWED_ORIGINS.includes(origin);
+  
+  if (!isAllowedOrigin) {
+    return new Response('Forbidden', { status: 403 });
+  }
+
+  const responseHeaders = {
+    ...corsHeaders,
+    'Access-Control-Allow-Origin': origin || '*'
+  };
+
   console.log('groq_chat called with method:', req.method);
 
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: responseHeaders });
   }
 
   try {
@@ -23,7 +43,7 @@ serve(async (req) => {
         JSON.stringify({ error: 'Server configuration error' }), 
         { 
           status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { ...responseHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
@@ -36,7 +56,7 @@ serve(async (req) => {
         JSON.stringify({ error: 'Messages array is required' }), 
         { 
           status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { ...responseHeaders, 'Content-Type': 'application/json' }
         }
       );
     }

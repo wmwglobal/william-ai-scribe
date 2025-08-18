@@ -1,14 +1,34 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 
+// Allowed origins for production security
+const ALLOWED_ORIGINS = [
+  'https://lovable.dev',
+  'http://localhost:5173',
+  'http://localhost:3000'
+];
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': '*', // Will be replaced with origin validation
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req) => {
+  // Origin validation for security
+  const origin = req.headers.get('origin');
+  const isAllowedOrigin = !origin || ALLOWED_ORIGINS.includes(origin);
+  
+  if (!isAllowedOrigin) {
+    return new Response('Forbidden', { status: 403 });
+  }
+
+  const responseHeaders = {
+    ...corsHeaders,
+    'Access-Control-Allow-Origin': origin || '*'
+  };
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: responseHeaders });
   }
 
   if (req.method !== 'POST') {

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AuthGuard } from '@/components/AuthGuard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -65,7 +66,8 @@ const Admin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <AuthGuard requiredRole="admin">
+      <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b bg-card">
         <div className="max-w-7xl mx-auto p-6">
@@ -313,6 +315,7 @@ const Admin = () => {
         </Tabs>
       </div>
     </div>
+    </AuthGuard>
   );
 };
 
