@@ -22,6 +22,7 @@ import { MoodRing } from '@/components/MoodRing';
 import { ConversationInsights } from '@/components/ConversationInsights';
 import { GROQ_MODELS, WILLIAM_PERSONALITIES, getDefaultModel, getDefaultPersonality } from '@/lib/models';
 import { getScoreBadgeVariant } from '@/lib/leadScore';
+import { getSessionAvatar } from '@/lib/avatarUtils';
 
 export default function Chat() {
   // State for model/personality selection
@@ -201,9 +202,11 @@ export default function Chat() {
       <div className="bg-background/90 backdrop-blur-sm border-b p-3">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-              <User className="w-4 h-4 text-primary-foreground" />
-            </div>
+            <img 
+              src={getSessionAvatar(sessionId || '')} 
+              alt="AI William" 
+              className="w-8 h-8 rounded-full object-cover"
+            />
             <div>
               <h1 className="font-semibold text-sm">AI William</h1>
               <div className="flex items-center gap-2">
@@ -256,13 +259,17 @@ export default function Chat() {
               {transcript.map((entry, index) => (
                 <div key={index} className={`flex gap-3 ${entry.speaker === 'agent' ? 'justify-start' : 'justify-end'}`}>
                   <div className={`flex gap-3 max-w-[80%] ${entry.speaker === 'agent' ? 'flex-row' : 'flex-row-reverse'}`}>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      entry.speaker === 'agent' 
-                        ? 'bg-primary text-primary-foreground' 
-                        : 'bg-muted text-muted-foreground'
-                    }`}>
-                      {entry.speaker === 'agent' ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
-                    </div>
+                    {entry.speaker === 'agent' ? (
+                      <img 
+                        src={getSessionAvatar(sessionId || '')} 
+                        alt="AI William" 
+                        className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center flex-shrink-0">
+                        <User className="w-4 h-4" />
+                      </div>
+                    )}
                     <div className={`rounded-lg px-4 py-2 ${
                       entry.speaker === 'agent'
                         ? 'bg-muted text-foreground'
@@ -281,9 +288,11 @@ export default function Chat() {
               {isTyping && (
                 <div className="flex gap-3 justify-start">
                   <div className="flex gap-3 max-w-[80%]">
-                    <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center flex-shrink-0">
-                      <Bot className="w-4 h-4" />
-                    </div>
+                    <img 
+                      src={getSessionAvatar(sessionId || '')} 
+                      alt="AI William" 
+                      className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                    />
                     <div className="bg-muted text-foreground rounded-lg px-4 py-2">
                       <div className="flex items-center gap-1">
                         <div className="flex space-x-1">
