@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Mic, MicOff, Volume2, VolumeX, Phone, User, Send, MessageSquare } from 'lucide-react';
+import { Volume2, VolumeX, Phone, User, Send, MessageSquare } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useVoiceChat } from '@/hooks/useVoiceChat';
 import { getScoreBadgeVariant } from '@/lib/leadScore';
@@ -26,24 +26,18 @@ const Chat = () => {
   
   const {
     sessionId,
-    isRecording,
     isSpeaking,
     isTyping,
     currentIntent,
     leadScore,
     transcript,
     createSession,
-    startRecording,
-    stopRecording,
     stopSpeaking,
     sendTextMessage
   } = useVoiceChat(audioEnabled);
 
   const startSession = async () => {
     try {
-      // Request microphone permissions and test audio context
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-      
       // Test if audio can play (important for autoplay restrictions)
       try {
         const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -67,8 +61,8 @@ const Chat = () => {
       });
     } catch (error) {
       toast({
-        title: "Microphone Access Required",
-        description: "Please allow microphone access to chat with AI William.",
+        title: "Session Error",
+        description: "Failed to start session. Please try again.",
         variant: "destructive",
       });
     }
@@ -76,26 +70,10 @@ const Chat = () => {
 
   const endSession = () => {
     setSessionStarted(false);
-    if (isRecording) stopRecording();
     if (isSpeaking) stopSpeaking();
     navigate('/');
   };
 
-  const handleRecordingToggle = async () => {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      try {
-        await startRecording();
-      } catch (error) {
-        toast({
-          title: "Recording Error",
-          description: "Failed to start recording. Please check microphone permissions.",
-          variant: "destructive",
-        });
-      }
-    }
-  };
 
   const handleSendText = async () => {
     if (!textMessage.trim()) return;
@@ -133,8 +111,7 @@ const Chat = () => {
               <div className="flex items-center gap-2">
                 <p className="text-sm text-muted-foreground">
                   {!sessionStarted ? "Ready to start" : 
-                   isSpeaking ? "Speaking..." : 
-                   isRecording ? "Listening..." : "Ready"}
+                   isSpeaking ? "Speaking..." : "Ready"}
                 </p>
                 <div className={`w-2 h-2 rounded-full ${selectedModel.color} bg-gradient-to-r`} />
                 <span className="text-xs text-muted-foreground">{selectedModel.name} • {selectedPersonality.name}</span>
@@ -250,8 +227,7 @@ const Chat = () => {
                 </div>
                 <h3 className="text-xl font-semibold mb-2">AI William MacDonald White</h3>
                 <p className="text-muted-foreground">
-                  {isSpeaking ? "Speaking with cloned voice..." : 
-                   isRecording ? "Listening..." : "Ready"}
+                  {isSpeaking ? "Speaking with cloned voice..." : "Ready"}
                 </p>
               </div>
             </div>
@@ -312,11 +288,11 @@ const Chat = () => {
                   onChange={(e) => setTextMessage(e.target.value)}
                   placeholder="Type a message..."
                   onKeyPress={(e) => e.key === 'Enter' && handleSendText()}
-                  disabled={isRecording || isSpeaking}
+                  disabled={isSpeaking}
                 />
                 <Button 
                   onClick={handleSendText}
-                  disabled={!textMessage.trim() || isRecording || isSpeaking}
+                  disabled={!textMessage.trim() || isSpeaking}
                   size="icon"
                 >
                   <Send className="w-4 h-4" />
@@ -343,7 +319,7 @@ const Chat = () => {
         )}
       </div>
 
-      {/* Voice Controls */}
+          {/* Voice Controls */}
       {sessionStarted && (
         <div className="bg-background/90 backdrop-blur-sm border-t p-4">
           <div className="max-w-4xl mx-auto flex items-center justify-center gap-4">
@@ -358,16 +334,6 @@ const Chat = () => {
             </Button>
             
             <Button
-              variant={isRecording ? "destructive" : "default"}
-              size="lg"
-              onClick={handleRecordingToggle}
-              disabled={isSpeaking}
-              className="w-16 h-16 rounded-full shadow-glow"
-            >
-              {isRecording ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
-            </Button>
-            
-            <Button
               variant="outline"
               size="icon"
               onClick={endSession}
@@ -378,9 +344,7 @@ const Chat = () => {
           </div>
           
           <div className="text-center mt-2 text-sm text-muted-foreground">
-            {isRecording ? "Recording..." : 
-             isSpeaking ? "AI William is speaking..." :
-             "Click microphone to start recording"}
+            {isSpeaking ? "AI William is speaking..." : "Ready for text chat"}
           </div>
         </div>
       )}
