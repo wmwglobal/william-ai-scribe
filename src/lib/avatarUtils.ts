@@ -13,7 +13,9 @@ const WILLIAM_AVATARS = [
  * @returns {string} Random avatar image path
  */
 export function getRandomWilliamAvatar(): string {
-  const randomIndex = Math.floor(Math.random() * WILLIAM_AVATARS.length);
+  // Prefer the anime style images (indices 1, 2, 3) which are better centered
+  const preferredIndices = [1, 2, 3];
+  const randomIndex = preferredIndices[Math.floor(Math.random() * preferredIndices.length)];
   return WILLIAM_AVATARS[randomIndex];
 }
 

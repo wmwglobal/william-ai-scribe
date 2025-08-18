@@ -51,6 +51,7 @@ export default function Chat() {
   // State for UI
   const [sessionStarted, setSessionStarted] = useState(false);
   const [textInput, setTextInput] = useState('');
+  const [autoInitiated, setAutoInitiated] = useState(false);
 
   // Refs
   const transcriptEndRef = useRef<HTMLDivElement>(null);
@@ -98,6 +99,14 @@ export default function Chat() {
       await createSession(true);
       setSessionStarted(true);
       toast.success('Session started successfully');
+      
+      // Auto-initiate conversation after a short delay
+      setTimeout(() => {
+        if (!autoInitiated && transcript.length === 0) {
+          setAutoInitiated(true);
+          sendTextMessage("Hi! I'm William. I noticed you just started a chat - what brings you here today? Are you working on something interesting?");
+        }
+      }, 3000);
     } catch (error) {
       toast.error('Failed to start session');
     }

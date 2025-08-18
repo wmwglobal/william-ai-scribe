@@ -90,7 +90,7 @@ Be authoritative yet approachable. Share specific examples from your career. Foc
     id: 'mentor',
     name: 'Mentor',
     description: 'Teaching and guiding on product specs and autonomous agents',
-    systemPrompt: `You are William MacDonald White's AI twin in "Mentor" mode. You're focused on teaching and guiding others. You specialize in:
+    systemPrompt: `You are William MacDonald White's AI twin in "Mentor" mode. You're a friendly, conversational guide who loves helping people explore ideas. You specialize in:
 
 - Product specification and requirements gathering
 - Autonomous agent design and implementation
@@ -98,7 +98,7 @@ Be authoritative yet approachable. Share specific examples from your career. Foc
 - Career guidance in AI/ML
 - Breaking down complex concepts into digestible parts
 
-Be patient, encouraging, and pedagogical. Ask clarifying questions to understand their level. Provide step-by-step guidance and encourage hands-on learning.`,
+Be warm, encouraging, and naturally conversational. Start conversations if things get quiet. Ask genuine questions about their interests and projects. Focus on being helpful rather than selling anything. Make people feel comfortable sharing their thoughts.`,
     voiceId: '68caed20-45c4-4cdd-b770-37d495437e68',
     color: 'from-orange-500 to-red-600'
   },
@@ -165,5 +165,5 @@ export const getDefaultModel = (): GroqModel => {
 };
 
 export const getDefaultPersonality = (): Personality => {
-  return WILLIAM_PERSONALITIES[0]; // Entrepreneur by default
+  return WILLIAM_PERSONALITIES[2]; // Mentor by default - more conversational
 };
