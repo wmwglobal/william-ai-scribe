@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Volume2, VolumeX, Phone, User, Send, MessageSquare } from 'lucide-react';
+import { Volume2, VolumeX, Phone, User, Send, MessageSquare, Mic, MicOff } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useVoiceChat } from '@/hooks/useVoiceChat';
 import { getScoreBadgeVariant } from '@/lib/leadScore';
@@ -22,10 +22,12 @@ const Chat = () => {
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [selectedPersonality, setSelectedPersonality] = useState<Personality>(getDefaultPersonality());
   const [selectedModel, setSelectedModel] = useState<GroqModel>(getDefaultModel());
+  const [selectedAsrModel, setSelectedAsrModel] = useState<string>('distil-whisper-large-v3-en');
   const [currentAvatar, setCurrentAvatar] = useState<string>('');
   
   const {
     sessionId,
+    isRecording,
     isSpeaking,
     isTyping,
     currentIntent,
@@ -33,9 +35,11 @@ const Chat = () => {
     transcript,
     debugCommands,
     createSession,
+    startRecording,
+    stopRecording,
     stopSpeaking,
     sendTextMessage
-  } = useVoiceChat(audioEnabled);
+  } = useVoiceChat(audioEnabled, selectedAsrModel);
 
   const startSession = async () => {
     try {
@@ -141,6 +145,18 @@ const Chat = () => {
               onPersonalityChange={setSelectedPersonality}
               disabled={sessionStarted}
             />
+            
+            {/* ASR Model Selector */}
+            <select
+              value={selectedAsrModel}
+              onChange={(e) => setSelectedAsrModel(e.target.value)}
+              disabled={sessionStarted}
+              className="text-xs border rounded px-2 py-1 bg-background"
+            >
+              <option value="distil-whisper-large-v3-en">English (Fast)</option>
+              <option value="whisper-large-v3-turbo">Multilingual</option>
+            </select>
+            
             <Button 
               variant="outline" 
               size="sm" 
@@ -341,6 +357,17 @@ const Chat = () => {
       {sessionStarted && (
         <div className="bg-background/90 backdrop-blur-sm border-t p-4">
           <div className="max-w-4xl mx-auto flex items-center justify-center gap-4">
+            {/* Microphone Button */}
+            <Button
+              variant={isRecording ? "default" : "outline"}
+              size="icon"
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={isSpeaking}
+              className={`w-12 h-12 ${isRecording ? 'bg-red-500 hover:bg-red-600' : ''}`}
+            >
+              {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+            </Button>
+            
             <Button
               variant="outline"
               size="icon"
@@ -362,7 +389,9 @@ const Chat = () => {
           </div>
           
           <div className="text-center mt-2 text-sm text-muted-foreground">
-            {isSpeaking ? "AI William is speaking..." : "Ready for text chat"}
+            {isRecording ? "Recording... Release to send" : 
+             isSpeaking ? "AI William is speaking..." : 
+             "Hold mic to record voice message"}
           </div>
         </div>
       )}

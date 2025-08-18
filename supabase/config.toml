@@ -1,1 +1,4 @@
 project_id = "suyervjawrmbyyxetblv"
+
+[functions.speech_to_text_groq]
+verify_jwt = false

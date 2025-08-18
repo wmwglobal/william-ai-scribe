@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { AudioPlayer, AudioRecorder, audioToBase64 } from '@/lib/audioUtils';
 import type { CreateSessionResponse, AgentReplyResponse } from '@/lib/types';
 
-export function useVoiceChat(audioEnabled: boolean = true) {
+export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'distil-whisper-large-v3-en') {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionSecret, setSessionSecret] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -42,12 +42,36 @@ export function useVoiceChat(audioEnabled: boolean = true) {
   }
 
   async function handleAudioData(audioBlob: Blob) {
-    if (!sessionId) return;
+    if (!sessionId || !sessionSecret) return;
 
     try {
-      // For now, we'll simulate speech recognition
-      // In production, you'd send this to Deepgram or another ASR service
-      const userMessage = "I'm interested in learning about AI consulting services for my company";
+      console.log('🎤 Processing audio with ASR model:', asrModel);
+      
+      // Convert to base64
+      const audioBase64 = await audioToBase64(audioBlob);
+      
+      // Call speech-to-text API
+      const { data, error } = await supabase.functions.invoke('speech_to_text_groq', {
+        body: {
+          session_id: sessionId,
+          session_secret: sessionSecret,
+          audio_base64: audioBase64,
+          model: asrModel
+        }
+      });
+
+      if (error) {
+        console.error('ASR error:', error);
+        throw new Error('Speech recognition failed');
+      }
+
+      const userMessage = data.text?.trim();
+      if (!userMessage) {
+        console.log('No speech detected in audio');
+        return;
+      }
+
+      console.log('🎤 ASR result:', { text: userMessage, duration: data.duration_ms, model: data.model });
       
       // Add user message to transcript
       setTranscript(prev => [...prev, {
@@ -202,6 +226,7 @@ export function useVoiceChat(audioEnabled: boolean = true) {
 
   return {
     sessionId,
+    isRecording,
     isSpeaking,
     isTyping,
     currentIntent,
@@ -209,6 +234,8 @@ export function useVoiceChat(audioEnabled: boolean = true) {
     transcript,
     debugCommands,
     createSession,
+    startRecording,
+    stopRecording,
     stopSpeaking,
     sendTextMessage
   };
