@@ -439,6 +439,10 @@ export type Database = {
         Args: { "": unknown }
         Returns: unknown
       }
+      is_admin_or_owner_with_validation: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       ivfflat_bit_support: {
         Args: { "": unknown }
         Returns: unknown
@@ -470,6 +474,10 @@ export type Database = {
       sparsevec_typmod_in: {
         Args: { "": unknown[] }
         Returns: number
+      }
+      validate_session_access: {
+        Args: { session_id_param: string; session_secret_param: string }
+        Returns: boolean
       }
       vector_avg: {
         Args: { "": number[] }
