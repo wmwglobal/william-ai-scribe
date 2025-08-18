@@ -29,7 +29,7 @@ export const PersonalitySelector = ({
       >
         <div className={`w-3 h-3 rounded-full bg-gradient-to-r ${selectedPersonality.color}`} />
         <span className="hidden sm:inline">{selectedPersonality.name}</span>
-        <span className="sm:hidden">Brain</span>
+        <span className="sm:hidden">Mode</span>
         <ChevronDown className="w-4 h-4" />
       </Button>
 
@@ -43,7 +43,7 @@ export const PersonalitySelector = ({
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center gap-2 mb-3">
                 <Brain className="w-4 h-4" />
-                <span className="font-medium">Choose William's Brain</span>
+                <span className="font-medium">Choose William's Mode</span>
               </div>
               
               {WILLIAM_PERSONALITIES.map((personality) => (
