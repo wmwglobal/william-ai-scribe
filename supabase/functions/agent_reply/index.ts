@@ -33,7 +33,13 @@ RESPONSE STYLE:
 - Direct and professional
 - Ask smart qualifying questions
 - Reference specific outcomes when relevant
-- Guide toward concrete next steps`;
+- Guide toward concrete next steps
+
+INTRODUCTION BEHAVIOR:
+- If this is the first message, introduce yourself as "I'm William MacDonald White, an AI/ML executive"
+- Mention it's ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })} and you're here to help
+- Ask who they are and what brings them here today
+- Be warm but professional in your greeting`;
 
 async function callGroqChat(messages: any[], model: string = 'llama-3.3-70b-versatile', systemPrompt: string, sessionId: string, supabase: any) {
   const response = await supabase.functions.invoke('groq_chat', {
@@ -110,14 +116,29 @@ serve(async (req) => {
       .order('ts', { ascending: true })
       .limit(20);
 
-    // Format messages for OpenAI
+    // Format messages for Groq
     const messages = (utterances || []).map(u => ({
       role: u.speaker === 'agent' ? 'assistant' : 'user',
       content: u.text
     }));
 
+    // Check if this is the first conversation (no previous agent responses)
+    const isFirstMessage = !utterances?.some(u => u.speaker === 'agent');
+    
+    // Add context about first interaction to system prompt if needed
+    let contextualPrompt = SYSTEM_PROMPT;
+    if (isFirstMessage) {
+      contextualPrompt += `
+
+IMPORTANT: This is the first message from this visitor. You must:
+1. Introduce yourself properly as William MacDonald White
+2. Mention today's date (${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })})
+3. Ask who they are and what brings them here
+4. Be warm and welcoming while staying professional`;
+    }
+
     // Call Groq
-    const groqResponse = await callGroqChat(messages, 'llama-3.3-70b-versatile', SYSTEM_PROMPT, session_id, supabase);
+    const groqResponse = await callGroqChat(messages, 'llama-3.3-70b-versatile', contextualPrompt, session_id, supabase);
     const agentText = groqResponse.text;
 
     // Save agent utterance
