@@ -37,12 +37,20 @@ serve(async (req) => {
     const debugCommands: string[] = [];
     let cleanText = text;
     
-    // Find and extract save_extract commands
-    const saveExtractRegex = /save_extract\{[^}]*\}/g;
-    const matches = cleanText.match(saveExtractRegex);
-    if (matches) {
-      debugCommands.push(...matches);
-      cleanText = cleanText.replace(saveExtractRegex, '').trim();
+    // Find and extract save_extract commands (multiple formats)
+    const saveExtractRegex1 = /save_extract\{[^}]*\}/gi;
+    const saveExtractRegex2 = /Save_extract:\s*[^.]*\./gi;
+    
+    const matches1 = cleanText.match(saveExtractRegex1);
+    const matches2 = cleanText.match(saveExtractRegex2);
+    
+    if (matches1) {
+      debugCommands.push(...matches1);
+      cleanText = cleanText.replace(saveExtractRegex1, '').trim();
+    }
+    if (matches2) {
+      debugCommands.push(...matches2);
+      cleanText = cleanText.replace(saveExtractRegex2, '').trim();
     }
     
     // Clean up any extra whitespace

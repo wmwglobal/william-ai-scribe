@@ -96,14 +96,24 @@ export function useVoiceChat(audioEnabled: boolean = true) {
       let displayText = agentResponse.text;
       const debugCommands: string[] = [];
       
-      // Extract and remove save_extract commands
-      const saveExtractRegex = /save_extract\{[^}]*\}/g;
-      const matches = displayText.match(saveExtractRegex);
-      if (matches) {
-        debugCommands.push(...matches);
-        displayText = displayText.replace(saveExtractRegex, '').trim();
-        displayText = displayText.replace(/\s+/g, ' ').trim();
+      // Extract and remove save_extract commands (multiple formats)
+      const saveExtractRegex1 = /save_extract\{[^}]*\}/gi;
+      const saveExtractRegex2 = /Save_extract:\s*[^.]*\./gi;
+      
+      const matches1 = displayText.match(saveExtractRegex1);
+      const matches2 = displayText.match(saveExtractRegex2);
+      
+      if (matches1) {
+        debugCommands.push(...matches1);
+        displayText = displayText.replace(saveExtractRegex1, '').trim();
       }
+      if (matches2) {
+        debugCommands.push(...matches2);
+        displayText = displayText.replace(saveExtractRegex2, '').trim();
+      }
+      
+      // Clean up any extra whitespace
+      displayText = displayText.replace(/\s+/g, ' ').trim();
       
       // Add agent response to transcript with cleaned text
       setTranscript(prev => [...prev, {
