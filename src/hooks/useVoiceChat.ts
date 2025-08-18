@@ -92,12 +92,36 @@ export function useVoiceChat(audioEnabled: boolean = true) {
 
       const agentResponse = response.data as AgentReplyResponse;
       
-      // Add agent response to transcript
+      // Clean debug commands from display text
+      let displayText = agentResponse.text;
+      const debugCommands: string[] = [];
+      
+      // Extract and remove save_extract commands
+      const saveExtractRegex = /save_extract\{[^}]*\}/g;
+      const matches = displayText.match(saveExtractRegex);
+      if (matches) {
+        debugCommands.push(...matches);
+        displayText = displayText.replace(saveExtractRegex, '').trim();
+        displayText = displayText.replace(/\s+/g, ' ').trim();
+      }
+      
+      // Add agent response to transcript with cleaned text
       setTranscript(prev => [...prev, {
         speaker: 'agent',
-        text: agentResponse.text,
+        text: displayText,
         timestamp: new Date()
       }]);
+      
+      // Add debug commands to debug state
+      if (debugCommands.length > 0) {
+        setDebugCommands(prev => [
+          ...prev,
+          ...debugCommands.map((cmd: string) => ({
+            command: cmd,
+            timestamp: new Date()
+          }))
+        ]);
+      }
 
       // Update intent and lead score if available
       if (agentResponse.extract) {
