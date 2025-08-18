@@ -33,7 +33,25 @@ serve(async (req) => {
       throw new Error('ELEVENLABS_API_KEY not configured');
     }
 
-    console.log(`Generating speech for session ${session_id}:`, text.substring(0, 100));
+    // Extract debug commands (save_extract, etc.) from the text
+    const debugCommands: string[] = [];
+    let cleanText = text;
+    
+    // Find and extract save_extract commands
+    const saveExtractRegex = /save_extract\{[^}]*\}/g;
+    const matches = cleanText.match(saveExtractRegex);
+    if (matches) {
+      debugCommands.push(...matches);
+      cleanText = cleanText.replace(saveExtractRegex, '').trim();
+    }
+    
+    // Clean up any extra whitespace
+    cleanText = cleanText.replace(/\s+/g, ' ').trim();
+
+    console.log(`Generating speech for session ${session_id}:`, cleanText.substring(0, 100));
+    if (debugCommands.length > 0) {
+      console.log(`Extracted debug commands:`, debugCommands);
+    }
 
     // Use your custom ElevenLabs voice clone for William MacDonald White
     const voiceId = voice_id || 'kEvELaJKlvVX03azWDUC'; // Your custom voice clone
@@ -46,7 +64,7 @@ serve(async (req) => {
         'xi-api-key': apiKey,
       },
       body: JSON.stringify({
-        text: text,
+        text: cleanText, // Use cleaned text for TTS
         model_id: 'eleven_turbo_v2_5', // High quality, low latency
         voice_settings: {
           stability: 0.5,
@@ -83,7 +101,9 @@ serve(async (req) => {
     return new Response(JSON.stringify({ 
       audio_base64: base64Audio,
       format: 'mp3',
-      text: text
+      text: cleanText,
+      original_text: text,
+      debug_commands: debugCommands
     }), {
       headers: { ...corsHeaders, 'content-type': 'application/json' }
     });

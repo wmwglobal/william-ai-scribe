@@ -12,6 +12,7 @@ export function useVoiceChat(audioEnabled: boolean = true) {
   const [currentIntent, setCurrentIntent] = useState<string | null>(null);
   const [leadScore, setLeadScore] = useState(0);
   const [transcript, setTranscript] = useState<Array<{speaker: 'visitor' | 'agent', text: string, timestamp: Date}>>([]);
+  const [debugCommands, setDebugCommands] = useState<Array<{command: string, timestamp: Date}>>([]);
   
   const audioPlayer = new AudioPlayer((playing) => setIsSpeaking(playing));
   const audioRecorder = new AudioRecorder(
@@ -108,6 +109,17 @@ export function useVoiceChat(audioEnabled: boolean = true) {
       if (agentResponse.audio_base64 && audioEnabled) {
         console.log('🎵 useVoiceChat: Playing TTS audio, length:', agentResponse.audio_base64.length);
         await audioPlayer.playAudio(agentResponse.audio_base64);
+        
+        // Handle debug commands from TTS response
+        if (agentResponse.debug_commands && agentResponse.debug_commands.length > 0) {
+          setDebugCommands(prev => [
+            ...prev,
+            ...agentResponse.debug_commands.map((cmd: string) => ({
+              command: cmd,
+              timestamp: new Date()
+            }))
+          ]);
+        }
       } else {
         console.log('🎵 useVoiceChat: No audio to play', {
           hasAudio: !!agentResponse.audio_base64,
@@ -156,15 +168,13 @@ export function useVoiceChat(audioEnabled: boolean = true) {
 
   return {
     sessionId,
-    isRecording,
     isSpeaking,
     isTyping,
     currentIntent,
     leadScore,
     transcript,
+    debugCommands,
     createSession,
-    startRecording,
-    stopRecording,
     stopSpeaking,
     sendTextMessage
   };

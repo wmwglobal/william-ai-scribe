@@ -107,6 +107,7 @@ export interface AgentReplyResponse {
   text: string;
   extract?: ExtractT;
   audio_base64?: string;
+  debug_commands?: string[];
   session_id: string;
 }
 

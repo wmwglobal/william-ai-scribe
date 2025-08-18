@@ -31,6 +31,7 @@ const Chat = () => {
     currentIntent,
     leadScore,
     transcript,
+    debugCommands,
     createSession,
     stopSpeaking,
     sendTextMessage
@@ -314,6 +315,23 @@ const Chat = () => {
                   </Badge>
                 )}
               </div>
+            )}
+
+            {/* Debug Commands Section */}
+            {debugCommands.length > 0 && (
+              <Card className="p-4 mb-6">
+                <h4 className="font-medium mb-2 text-sm">Debug Commands</h4>
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {debugCommands.slice(-5).map((cmd, index) => (
+                    <div key={index} className="text-xs font-mono bg-muted p-2 rounded">
+                      <span className="text-muted-foreground">
+                        {cmd.timestamp.toLocaleTimeString()}
+                      </span>
+                      <span className="ml-2">{cmd.command}</span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
             )}
           </div>
         )}
