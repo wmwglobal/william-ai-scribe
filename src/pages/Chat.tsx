@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Volume2, VolumeX, Phone, User, Send, MessageSquare, Mic, MicOff } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useVoiceChat } from '@/hooks/useVoiceChat';
@@ -24,6 +25,8 @@ const Chat = () => {
   const [selectedModel, setSelectedModel] = useState<GroqModel>(getDefaultModel());
   const [selectedAsrModel, setSelectedAsrModel] = useState<string>('distil-whisper-large-v3-en');
   const [currentAvatar, setCurrentAvatar] = useState<string>('');
+  const [typingText, setTypingText] = useState('');
+  const transcriptEndRef = useRef<HTMLDivElement>(null);
   
   const {
     sessionId,
@@ -83,15 +86,18 @@ const Chat = () => {
   const handleSendText = async () => {
     if (!textMessage.trim()) return;
     
+    const messageToSend = textMessage;
+    setTextMessage(''); // Clear immediately when user presses send
+    
     try {
-      await sendTextMessage(textMessage);
-      setTextMessage('');
+      await sendTextMessage(messageToSend);
     } catch (error) {
       toast({
         title: "Message Error",
         description: "Failed to send message. Please try again.",
         variant: "destructive",
       });
+      setTextMessage(messageToSend); // Restore message on error
     }
   };
 
@@ -102,23 +108,79 @@ const Chat = () => {
     });
   };
 
+  // Realistic typing indicator with varied text
+  useEffect(() => {
+    if (!isTyping) {
+      setTypingText('');
+      return;
+    }
+
+    const typingMessages = [
+      'thinking...',
+      'processing your message...',
+      'analyzing...',
+      'formulating response...',
+      'considering options...',
+      'reviewing context...',
+      'crafting reply...',
+      'almost ready...'
+    ];
+
+    let messageIndex = 0;
+    let charIndex = 0;
+    let isDeleting = false;
+    
+    const typeInterval = setInterval(() => {
+      const currentMessage = typingMessages[messageIndex];
+      
+      if (!isDeleting) {
+        if (charIndex < currentMessage.length) {
+          setTypingText(currentMessage.substring(0, charIndex + 1));
+          charIndex++;
+        } else {
+          // Start deleting after a pause
+          setTimeout(() => { isDeleting = true; }, 800);
+        }
+      } else {
+        if (charIndex > 0) {
+          setTypingText(currentMessage.substring(0, charIndex - 1));
+          charIndex--;
+        } else {
+          // Move to next message
+          isDeleting = false;
+          messageIndex = (messageIndex + 1) % typingMessages.length;
+          setTimeout(() => {}, 200);
+        }
+      }
+    }, isDeleting ? 50 : 100);
+
+    return () => clearInterval(typeInterval);
+  }, [isTyping]);
+
+  // Auto-scroll transcript to bottom
+  useEffect(() => {
+    if (transcriptEndRef.current) {
+      transcriptEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [transcript, isTyping]);
+
   return (
     <div className="min-h-screen bg-gradient-hero flex flex-col">
       {/* Header */}
-      <div className="bg-background/90 backdrop-blur-sm border-b p-4">
+      <div className="bg-background/90 backdrop-blur-sm border-b p-3">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-              <User className="w-5 h-5 text-primary-foreground" />
+            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+              <User className="w-4 h-4 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="font-semibold">AI William MacDonald White</h1>
+              <h1 className="font-semibold text-sm">AI William</h1>
               <div className="flex items-center gap-2">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {!sessionStarted ? "Ready to start" : 
                    isSpeaking ? "Speaking..." : "Ready"}
                 </p>
-                <div className={`w-2 h-2 rounded-full ${selectedModel.color} bg-gradient-to-r`} />
+                <div className={`w-1.5 h-1.5 rounded-full ${selectedModel.color} bg-gradient-to-r`} />
                 <span className="text-xs text-muted-foreground">{selectedModel.name} • {selectedPersonality.name}</span>
               </div>
             </div>
@@ -198,9 +260,9 @@ const Chat = () => {
           <div className="flex-1 flex items-center justify-center">
             <Card className="p-8 text-center max-w-md shadow-elegant">
               <div className="w-32 h-32 mx-auto mb-6 bg-gradient-primary flex items-center justify-center overflow-hidden rounded-lg shadow-elegant">
-                <img src={currentAvatar || getSessionAvatar('')} alt="William MacDonald White" className="w-full h-full object-cover" />
+                <img src={currentAvatar || getSessionAvatar('')} alt="AI William" className="w-full h-full object-cover" />
               </div>
-              <h2 className="text-2xl font-bold mb-4">Chat with AI William MacDonald White</h2>
+              <h2 className="text-2xl font-bold mb-4">Chat with AI William</h2>
               <p className="text-muted-foreground mb-6">
                 Start a voice conversation with William's AI twin. Choose from different personalities and models 
                 for varied expertise and interaction styles.
@@ -240,9 +302,9 @@ const Chat = () => {
                 <div className={`w-48 h-48 mx-auto mb-6 bg-gradient-primary flex items-center justify-center overflow-hidden rounded-lg shadow-elegant ${
                   isSpeaking ? 'speaking-indicator' : ''
                 }`}>
-                  <img src={currentAvatar} alt="William MacDonald White" className="w-full h-full object-cover" />
+                  <img src={currentAvatar} alt="AI William" className="w-full h-full object-cover" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">AI William MacDonald White</h3>
+                <h3 className="text-xl font-semibold mb-2">AI William</h3>
                 <p className="text-muted-foreground">
                   {isSpeaking ? "Speaking with cloned voice..." : "Ready"}
                 </p>
@@ -250,51 +312,50 @@ const Chat = () => {
             </div>
 
             {/* Live Transcript Area */}
-            <Card className="p-4 mb-6 min-h-[200px] max-h-[300px] overflow-y-auto">
+            <Card className="p-4 mb-6 min-h-[200px] max-h-[300px]">
               <h4 className="font-medium mb-2">Live Transcript</h4>
-              <div className="space-y-3">
-                {transcript.length === 0 ? (
-                  <p className="text-sm text-muted-foreground italic">
-                    Conversation will appear here...
-                  </p>
-                ) : (
-                  <>
-                    {transcript.map((entry, index) => (
-                    <div key={index} className={`text-sm p-2 rounded ${
-                      entry.speaker === 'agent' 
-                        ? 'bg-primary/10 ml-4' 
-                        : 'bg-muted mr-4'
-                    }`}>
-                      <div className="font-medium text-xs mb-1">
-                        {entry.speaker === 'agent' ? 'AI William' : 'You'}
-                        <span className="text-muted-foreground ml-2">
-                          {entry.timestamp.toLocaleTimeString()}
-                        </span>
-                      </div>
-                      <div>{entry.text}</div>
-                    </div>
-                    ))}
-                    {isTyping && (
-                      <div className="text-sm p-2 rounded bg-primary/10 ml-4 animate-fade-in">
+              <ScrollArea className="h-[250px]">
+                <div className="space-y-3 pr-4">
+                  {transcript.length === 0 ? (
+                    <p className="text-sm text-muted-foreground italic">
+                      Conversation will appear here...
+                    </p>
+                  ) : (
+                    <>
+                      {transcript.map((entry, index) => (
+                      <div key={index} className={`text-sm p-2 rounded ${
+                        entry.speaker === 'agent' 
+                          ? 'bg-primary/10 ml-4' 
+                          : 'bg-muted mr-4'
+                      }`}>
                         <div className="font-medium text-xs mb-1">
-                          AI William
+                          {entry.speaker === 'agent' ? 'AI William' : 'You'}
                           <span className="text-muted-foreground ml-2">
-                            {new Date().toLocaleTimeString()}
+                            {entry.timestamp.toLocaleTimeString()}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <span>typing</span>
-                          <div className="flex gap-1">
-                            <div className="w-1 h-1 bg-primary rounded-full animate-pulse" style={{animationDelay: '0ms'}}></div>
-                            <div className="w-1 h-1 bg-primary rounded-full animate-pulse" style={{animationDelay: '150ms'}}></div>
-                            <div className="w-1 h-1 bg-primary rounded-full animate-pulse" style={{animationDelay: '300ms'}}></div>
+                        <div>{entry.text}</div>
+                      </div>
+                      ))}
+                      {isTyping && (
+                        <div className="text-sm p-2 rounded bg-primary/10 ml-4 animate-fade-in">
+                          <div className="font-medium text-xs mb-1">
+                            AI William
+                            <span className="text-muted-foreground ml-2">
+                              {new Date().toLocaleTimeString()}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span>{typingText}</span>
+                            <div className="w-1 h-1 bg-primary rounded-full animate-pulse ml-1"></div>
                           </div>
                         </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
+                      )}
+                      <div ref={transcriptEndRef} />
+                    </>
+                  )}
+                </div>
+              </ScrollArea>
             </Card>
 
             {/* Text Input Area */}
