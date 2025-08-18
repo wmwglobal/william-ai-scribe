@@ -223,7 +223,7 @@ function scoreLead(entities: any, intent: string): { score: number; reasons: str
 
 // Enhanced OpenAI function calling
 async function callOpenAIWithFunctions(messages: any[], systemPrompt: string, sessionId: string) {
-  if (!openaiApiKey) {
+  if (!openaiApiKey || openaiApiKey.trim() === '') {
     throw new Error('OpenAI API key not configured');
   }
 
