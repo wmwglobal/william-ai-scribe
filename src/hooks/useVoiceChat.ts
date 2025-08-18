@@ -11,6 +11,7 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
   const [isTyping, setIsTyping] = useState(false);
   const [currentIntent, setCurrentIntent] = useState<string | null>(null);
   const [leadScore, setLeadScore] = useState(0);
+  const [latestExtract, setLatestExtract] = useState<any>(null);
   const [transcript, setTranscript] = useState<Array<{speaker: 'visitor' | 'agent', text: string, timestamp: Date}>>([]);
   const [debugCommands, setDebugCommands] = useState<Array<{command: string, timestamp: Date}>>([]);
   
@@ -162,6 +163,7 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
       if (agentResponse.extract) {
         setCurrentIntent(agentResponse.extract.intent);
         setLeadScore(agentResponse.extract.lead_score || 0);
+        setLatestExtract(agentResponse.extract);
       }
 
       // Play TTS audio if available and audio is enabled
@@ -232,6 +234,7 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
     isTyping,
     currentIntent,
     leadScore,
+    latestExtract,
     transcript,
     debugCommands,
     createSession,
