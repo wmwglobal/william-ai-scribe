@@ -43,7 +43,7 @@ export const ModelSelector = ({
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center gap-2 mb-3">
                 <Brain className="w-4 h-4" />
-                <span className="font-medium">Choose Model Brain</span>
+                <span className="font-medium">Choose AI William's Brain</span>
               </div>
               
               {GROQ_MODELS.map((model) => (

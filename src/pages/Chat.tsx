@@ -84,7 +84,7 @@ const Chat = () => {
 
 
   const handleSendText = async () => {
-    if (!textMessage.trim()) return;
+    if (!textMessage.trim() || isSpeaking || isTyping) return;
     
     const messageToSend = textMessage;
     setTextMessage(''); // Clear immediately when user presses send
@@ -108,7 +108,7 @@ const Chat = () => {
     });
   };
 
-  // Realistic typing indicator with varied text
+  // Stochastic typing indicator with varied speed and effects
   useEffect(() => {
     if (!isTyping) {
       setTypingText('');
@@ -116,52 +116,98 @@ const Chat = () => {
     }
 
     const typingMessages = [
-      'thinking...',
+      'thinking about your question...',
       'processing your message...',
-      'analyzing...',
-      'formulating response...',
-      'considering options...',
-      'reviewing context...',
-      'crafting reply...',
-      'almost ready...'
+      'analyzing the context...',
+      'formulating a thoughtful response...',
+      'considering different perspectives...',
+      'reviewing what we\'ve discussed...',
+      'crafting the perfect reply...',
+      'almost ready to respond...',
+      'putting thoughts together...',
+      'drawing from experience...'
     ];
 
-    let messageIndex = 0;
+    let messageIndex = Math.floor(Math.random() * typingMessages.length);
     let charIndex = 0;
     let isDeleting = false;
+    let hasTyped = false;
+    
+    const getTypingSpeed = () => {
+      // Vary speed: sometimes fast bursts, sometimes slower thinking
+      if (Math.random() < 0.3) return Math.random() * 50 + 30; // Fast burst
+      if (Math.random() < 0.2) return Math.random() * 200 + 150; // Thinking pause
+      return Math.random() * 80 + 60; // Normal speed
+    };
     
     const typeInterval = setInterval(() => {
       const currentMessage = typingMessages[messageIndex];
       
       if (!isDeleting) {
         if (charIndex < currentMessage.length) {
+          // Occasional backspace effect (typo correction)
+          if (hasTyped && Math.random() < 0.05 && charIndex > 3) {
+            charIndex = Math.max(0, charIndex - 2);
+            setTypingText(currentMessage.substring(0, charIndex));
+            return;
+          }
+          
           setTypingText(currentMessage.substring(0, charIndex + 1));
           charIndex++;
+          hasTyped = true;
         } else {
-          // Start deleting after a pause
-          setTimeout(() => { isDeleting = true; }, 800);
+          // Random pause before starting to delete
+          setTimeout(() => { 
+            isDeleting = true; 
+          }, Math.random() * 1200 + 600);
         }
       } else {
-        if (charIndex > 0) {
+        if (charIndex > Math.floor(currentMessage.length * 0.3)) {
           setTypingText(currentMessage.substring(0, charIndex - 1));
           charIndex--;
         } else {
           // Move to next message
           isDeleting = false;
           messageIndex = (messageIndex + 1) % typingMessages.length;
-          setTimeout(() => {}, 200);
+          hasTyped = false;
+          setTimeout(() => {}, Math.random() * 300 + 100);
         }
       }
-    }, isDeleting ? 50 : 100);
+    }, isDeleting ? Math.random() * 40 + 30 : getTypingSpeed());
 
     return () => clearInterval(typeInterval);
   }, [isTyping]);
 
-  // Auto-scroll transcript to bottom
+  // Auto-scroll transcript with intersection observer fallback
   useEffect(() => {
+    const scrollToBottom = () => {
+      if (transcriptEndRef.current) {
+        transcriptEndRef.current.scrollIntoView({ 
+          behavior: 'smooth',
+          block: 'end'
+        });
+      }
+    };
+
+    // Immediate scroll
+    scrollToBottom();
+
+    // Intersection observer fallback for better reliability
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (!entry.isIntersecting && transcript.length > 0) {
+          scrollToBottom();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
     if (transcriptEndRef.current) {
-      transcriptEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      observer.observe(transcriptEndRef.current);
     }
+
+    return () => observer.disconnect();
   }, [transcript, isTyping]);
 
   return (
@@ -264,7 +310,7 @@ const Chat = () => {
               </div>
               <h2 className="text-2xl font-bold mb-4">Chat with AI William</h2>
               <p className="text-muted-foreground mb-6">
-                Start a voice conversation with William's AI twin. Choose from different personalities and models 
+                Start a conversation with AI William's digital twin. Choose from different personalities and models 
                 for varied expertise and interaction styles.
               </p>
               
@@ -289,7 +335,7 @@ const Chat = () => {
                 Start Conversation
               </Button>
               <p className="text-xs text-muted-foreground mt-4">
-                Powered by AI voice cloning technology
+                Powered by AI William's voice cloning technology
               </p>
             </Card>
           </div>
@@ -306,7 +352,7 @@ const Chat = () => {
                 </div>
                 <h3 className="text-xl font-semibold mb-2">AI William</h3>
                 <p className="text-muted-foreground">
-                  {isSpeaking ? "Speaking with cloned voice..." : "Ready"}
+                  {isSpeaking ? "AI William speaking..." : isTyping ? "AI William thinking..." : "Ready"}
                 </p>
               </div>
             </div>
@@ -365,12 +411,17 @@ const Chat = () => {
                   value={textMessage}
                   onChange={(e) => setTextMessage(e.target.value)}
                   placeholder="Type a message..."
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendText()}
-                  disabled={isSpeaking}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendText();
+                    }
+                  }}
+                  disabled={isSpeaking || isTyping}
                 />
                 <Button 
                   onClick={handleSendText}
-                  disabled={!textMessage.trim() || isSpeaking}
+                  disabled={!textMessage.trim() || isSpeaking || isTyping}
                   size="icon"
                 >
                   <Send className="w-4 h-4" />
@@ -452,6 +503,7 @@ const Chat = () => {
           <div className="text-center mt-2 text-sm text-muted-foreground">
             {isRecording ? "Recording... Release to send" : 
              isSpeaking ? "AI William is speaking..." : 
+             isTyping ? "AI William is thinking..." :
              "Hold mic to record voice message"}
           </div>
         </div>
