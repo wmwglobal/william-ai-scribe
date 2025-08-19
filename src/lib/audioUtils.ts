@@ -111,7 +111,7 @@ export class AudioRecorder {
   private vadCheckInterval: number | null = null;
   private lastSpeechTime = 0;
   private silenceThreshold = 800; // Reduced to 800ms for more responsive detection
-  private volumeThreshold = 0.005; // Lowered threshold for more sensitivity
+  private volumeThreshold = 0.002; // Further lowered threshold for more sensitivity
   private isCurrentlySpeaking = false;
 
   constructor(
@@ -170,15 +170,14 @@ export class AudioRecorder {
       const now = Date.now();
       const isSpeaking = normalizedVolume > this.volumeThreshold;
 
-      // Log voice activity for debugging
-      if (normalizedVolume > 0.001) { // Only log when there's some audio
-        console.log('🎤 Voice Activity:', {
-          volume: normalizedVolume.toFixed(4),
-          threshold: this.volumeThreshold,
-          isSpeaking,
-          isRecording: this.isRecording
-        });
-      }
+      // Log voice activity for debugging (always log to help with debugging)
+      console.log('🎤 Voice Activity:', {
+        volume: normalizedVolume.toFixed(4),
+        threshold: this.volumeThreshold,
+        isSpeaking,
+        isRecording: this.isRecording,
+        isContinuous: this.isContinuousMode
+      });
 
       if (isSpeaking) {
         this.lastSpeechTime = now;
