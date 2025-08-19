@@ -111,16 +111,17 @@ export class AudioRecorder {
   private vadCheckInterval: number | null = null;
   private transcriptionCheckInterval: number | null = null;
   private lastWordTime = 0;
-  private wordSilenceThreshold = 3000; // 3 seconds of no new words
+  private wordSilenceThreshold = 4000; // 4 seconds of no new words (longer pause)
   private volumeThreshold = 0.01; // Basic threshold for initial speech detection
   private isCurrentlySpeaking = false;
-  private maxRecordingDuration = 45000; // 45 seconds max per segment
-  private minRecordingDuration = 2000; // Minimum 2 seconds before allowing stop
+  private maxRecordingDuration = 30000; // 30 seconds max per segment (shorter to prevent long segments)
+  private minRecordingDuration = 3000; // Minimum 3 seconds before allowing stop
   private recordingStartTime = 0;
   private lastTranscript = '';
-  private transcriptCheckDuration = 1000; // Check every 1 second
+  private transcriptCheckDuration = 2000; // Check every 2 seconds to reduce frequency
   private volumeHistory: number[] = [];
   private readonly volumeHistorySize = 5;
+  private isProcessingTranscription = false; // Prevent overlapping transcription checks
 
   constructor(
     private onDataAvailable?: (audioBlob: Blob) => void,
@@ -229,11 +230,12 @@ export class AudioRecorder {
   }
 
   private startWordBasedDetection(): void {
-    // Start checking for new words every second
+    // Start checking for new words every 2 seconds
     this.transcriptionCheckInterval = window.setInterval(async () => {
-      if (!this.isRecording || !this.onTranscriptionCheck) return;
+      if (!this.isRecording || !this.onTranscriptionCheck || this.isProcessingTranscription) return;
 
       try {
+        this.isProcessingTranscription = true;
         // Get current audio chunk for transcription check
         const currentBlob = new Blob(this.chunks, { type: 'audio/webm;codecs=opus' });
         if (currentBlob.size > 0) {
@@ -248,27 +250,27 @@ export class AudioRecorder {
           }
           
           // Check if we have meaningful new words (require substantial progress)
-          if (transcript && transcript.length > 10 && 
-              transcript.length > this.lastTranscript.length + 3) {
+          if (transcript && transcript.length > 15 && 
+              transcript.length > this.lastTranscript.length + 5) {
             this.lastWordTime = Date.now();
             this.lastTranscript = transcript;
-            console.log('🎤 📝 NEW WORDS detected:', transcript);
+            console.log('🎤 📝 NEW WORDS detected, continuing...', transcript.slice(-50));
           } else {
             // Only consider stopping if:
             // 1. We've been recording for at least minimum duration
-            // 2. We have a reasonable amount of content
+            // 2. We have substantial content (more than just noise)
             // 3. We've been silent for the threshold time
             const recordingDuration = Date.now() - this.recordingStartTime;
             const timeSinceLastWord = Date.now() - this.lastWordTime;
-            const hasMinimumContent = transcript && transcript.length > 5;
+            const hasSubstantialContent = transcript && transcript.length > 20;
             
             if (recordingDuration > this.minRecordingDuration && 
-                hasMinimumContent && 
+                hasSubstantialContent && 
                 timeSinceLastWord > this.wordSilenceThreshold) {
               console.log('🎤 🛑 STOPPING - Complete thought detected:', {
                 duration: recordingDuration,
                 silenceTime: timeSinceLastWord,
-                transcript: transcript
+                finalLength: transcript?.length
               });
               this.stopRecordingSegment();
               this.onSpeechActivity?.(false);
@@ -277,6 +279,8 @@ export class AudioRecorder {
         }
       } catch (error) {
         console.error('🎤 ❌ Transcription check error:', error);
+      } finally {
+        this.isProcessingTranscription = false;
       }
     }, this.transcriptCheckDuration);
   }

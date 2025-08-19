@@ -20,6 +20,8 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
   // Use refs to prevent state updates after unmount
   const isMountedRef = useRef(true);
   const processingRef = useRef(false);
+  const audioQueueRef = useRef<Blob[]>([]);
+  const isProcessingQueueRef = useRef(false);
   
   // Initialize audio utilities
   const audioPlayerRef = useRef<AudioPlayer | null>(null);
@@ -92,37 +94,50 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
     };
   }, [sessionId, sessionSecret]); // Add dependencies so it recreates when session changes
 
-  async function handleAudioData(audioBlob: Blob) {
-    console.log('🎤 ===== handleAudioData START =====');
-    console.log('🎤 Blob size:', audioBlob.size, 'bytes');
-    console.log('🎤 Session ID:', sessionId);
-    console.log('🎤 Session Secret:', sessionSecret ? 'Present' : 'Missing');
-    console.log('🎤 Processing ref:', processingRef.current);
-    console.log('🎤 Mounted ref:', isMountedRef.current);
-    
-    if (!sessionId) {
-      console.error('🎤 BLOCKED: No session ID');
-      return;
-    }
-    
-    if (!sessionSecret) {
-      console.error('🎤 BLOCKED: No session secret');
-      return;
-    }
-    
-    if (processingRef.current) {
-      console.log('🎤 ⚠️ Already processing - queuing this request');
-      // Don't block completely, just wait a bit and try again
-      setTimeout(() => handleAudioData(audioBlob), 100);
-      return;
-    }
-    
-    if (!isMountedRef.current) {
-      console.error('🎤 BLOCKED: Component unmounted');
+  // Queue-based audio processing to prevent backlog
+  async function processAudioQueue() {
+    if (isProcessingQueueRef.current || audioQueueRef.current.length === 0) {
       return;
     }
 
-    console.log('🎤 All checks passed, starting processing...');
+    isProcessingQueueRef.current = true;
+    
+    try {
+      while (audioQueueRef.current.length > 0 && isMountedRef.current) {
+        // Only keep the most recent audio if queue gets too long
+        if (audioQueueRef.current.length > 2) {
+          console.log('🎤 ⚠️ Queue too long, keeping only latest audio');
+          audioQueueRef.current = [audioQueueRef.current[audioQueueRef.current.length - 1]];
+        }
+        
+        const audioBlob = audioQueueRef.current.shift()!;
+        await processAudioBlob(audioBlob);
+        
+        // Add small delay between processing
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+    } finally {
+      isProcessingQueueRef.current = false;
+    }
+  }
+
+  async function handleAudioData(audioBlob: Blob) {
+    if (!sessionId || !sessionSecret || !isMountedRef.current) {
+      console.log('🎤 BLOCKED: Missing session or unmounted');
+      return;
+    }
+    
+    // Add to queue instead of processing immediately
+    audioQueueRef.current.push(audioBlob);
+    console.log('🎤 Added to queue, length:', audioQueueRef.current.length);
+    
+    // Start processing queue
+    processAudioQueue();
+  }
+
+  async function processAudioBlob(audioBlob: Blob) {
+    console.log('🎤 ===== processAudioBlob START =====');
+    console.log('🎤 Blob size:', audioBlob.size, 'bytes');
 
     try {
       processingRef.current = true;
