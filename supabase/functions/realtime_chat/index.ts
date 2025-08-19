@@ -41,7 +41,8 @@ serve(async (req) => {
     }
     
     console.log('🤖 Using OpenAI API key:', OPENAI_API_KEY.substring(0, 10) + '...');
-    const openaiUrl = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01";
+    // OpenAI Realtime API requires the API key in the URL, not headers for WebSocket
+    const openaiUrl = `wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01`;
     console.log('🤖 Connecting to:', openaiUrl);
     
     openAISocket = new WebSocket(openaiUrl, [], {

@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.realtime_chat]
 verify_jwt = false
+
+[functions.openai_token]
+verify_jwt = false
