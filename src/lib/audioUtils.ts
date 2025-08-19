@@ -110,8 +110,9 @@ export class AudioRecorder {
   private source: MediaStreamAudioSourceNode | null = null;
   private vadCheckInterval: number | null = null;
   private lastSpeechTime = 0;
-  private silenceThreshold = 1000; // 1 second of silence before processing
-  private volumeThreshold = 0.01; // Minimum volume to consider as speech
+  private silenceThreshold = 800; // Reduced to 800ms for more responsive detection
+  private volumeThreshold = 0.005; // Lowered threshold for more sensitivity
+  private isCurrentlySpeaking = false;
 
   constructor(
     private onDataAvailable?: (audioBlob: Blob) => void,
@@ -169,22 +170,36 @@ export class AudioRecorder {
       const now = Date.now();
       const isSpeaking = normalizedVolume > this.volumeThreshold;
 
+      // Log voice activity for debugging
+      if (normalizedVolume > 0.001) { // Only log when there's some audio
+        console.log('🎤 Voice Activity:', {
+          volume: normalizedVolume.toFixed(4),
+          threshold: this.volumeThreshold,
+          isSpeaking,
+          isRecording: this.isRecording
+        });
+      }
+
       if (isSpeaking) {
         this.lastSpeechTime = now;
         
         // Start recording if not already recording
         if (!this.isRecording) {
+          console.log('🎤 Starting recording due to speech detection');
           this.startRecordingSegment();
           this.onSpeechActivity?.(true);
+          this.isCurrentlySpeaking = true;
         }
       } else if (this.isRecording && (now - this.lastSpeechTime) > this.silenceThreshold) {
         // Stop recording after silence threshold
+        console.log('🎤 Stopping recording due to silence');
         this.stopRecordingSegment();
         this.onSpeechActivity?.(false);
+        this.isCurrentlySpeaking = false;
       }
     };
 
-    this.vadCheckInterval = window.setInterval(checkVoiceActivity, 100);
+    this.vadCheckInterval = window.setInterval(checkVoiceActivity, 50); // Check more frequently
   }
 
   private startRecordingSegment(): void {
