@@ -109,20 +109,23 @@ export class AudioRecorder {
   private analyser: AnalyserNode | null = null;
   private source: MediaStreamAudioSourceNode | null = null;
   private vadCheckInterval: number | null = null;
-  private lastSpeechTime = 0;
-  private silenceThreshold = 1000; // 1 second for natural speech pauses
-  private volumeThreshold = 0.01; // Simple volume threshold that works
+  private transcriptionCheckInterval: number | null = null;
+  private lastWordTime = 0;
+  private wordSilenceThreshold = 2000; // 2 seconds of no new words
+  private volumeThreshold = 0.01; // Basic threshold for initial speech detection
   private isCurrentlySpeaking = false;
-  private maxRecordingDuration = 10000; // 10 seconds per segment
+  private maxRecordingDuration = 30000; // 30 seconds max per segment
   private recordingStartTime = 0;
-  private speechStartTime = 0;
-  private volumeHistory: number[] = []; // For smoothing
-  private readonly volumeHistorySize = 5; // Smaller window for responsiveness
+  private lastTranscript = '';
+  private transcriptCheckDuration = 1000; // Check for new words every 1 second
+  private volumeHistory: number[] = [];
+  private readonly volumeHistorySize = 5;
 
   constructor(
     private onDataAvailable?: (audioBlob: Blob) => void,
     private onRecordingChange?: (isRecording: boolean) => void,
-    private onSpeechActivity?: (isSpeaking: boolean) => void
+    private onSpeechActivity?: (isSpeaking: boolean) => void,
+    private onTranscriptionCheck?: (audioBlob: Blob) => Promise<string>
   ) {}
 
   async startContinuousListening(): Promise<void> {
@@ -179,76 +182,85 @@ export class AudioRecorder {
 
       this.analyser.getByteFrequencyData(dataArray);
       
-      // Simple average volume calculation
+      // Simple average volume calculation for initial speech detection
       const average = dataArray.reduce((a, b) => a + b) / bufferLength;
       const normalizedVolume = average / 255;
-      
-      // Smooth the volume to reduce noise
       const smoothedVolume = this.smoothVolume(normalizedVolume);
       
       const now = Date.now();
       const isSpeaking = smoothedVolume > this.volumeThreshold;
-      const wasSpeaking = this.isCurrentlySpeaking;
 
-      // Simple logging
       if (smoothedVolume > 0.002) {
         console.log('🎤 Voice Activity:', {
           raw: normalizedVolume.toFixed(4),
           smoothed: smoothedVolume.toFixed(4),
           threshold: this.volumeThreshold,
           isSpeaking,
-          wasSpeaking,
           isRecording: this.isRecording,
-          timeSinceLastSpeech: now - this.lastSpeechTime
+          timeSinceLastWord: now - this.lastWordTime
         });
       }
 
       if (isSpeaking) {
-        this.lastSpeechTime = now;
-        
-        // Track when continuous speech started
-        if (!this.isCurrentlySpeaking) {
-          this.speechStartTime = now;
-          this.isCurrentlySpeaking = true;
-          console.log('🎤 📢 SPEECH STARTED - volume:', smoothedVolume.toFixed(4));
-        }
-        
         // Start recording if not already recording
         if (!this.isRecording && this.isContinuousMode) {
           console.log('🎤 ✅ TRIGGERING RECORDING - volume:', smoothedVolume.toFixed(4));
           this.startRecordingSegment();
+          this.startWordBasedDetection();
           this.onSpeechActivity?.(true);
         }
-      } else {
-        // Not currently speaking - check for silence
-        if (this.isCurrentlySpeaking) {
-          const silenceDuration = now - this.lastSpeechTime;
-          
-          if (silenceDuration > this.silenceThreshold) {
-            console.log('🎤 📢 SPEECH ENDED - silence for', silenceDuration, 'ms');
-            this.isCurrentlySpeaking = false;
-            
-            if (this.isRecording) {
-              console.log('🎤 🛑 AUTO-STOPPING recording due to speech end');
-              this.stopRecordingSegment();
-              this.onSpeechActivity?.(false);
-            }
-          }
-        }
-        
-        // Fallback: max recording duration check
-        if (this.isRecording) {
-          const recordingDuration = now - this.recordingStartTime;
-          if (recordingDuration > this.maxRecordingDuration) {
-            console.log('🎤 🛑 Stopping recording due to max duration:', recordingDuration, 'ms');
-            this.stopRecordingSegment();
-            this.onSpeechActivity?.(false);
-          }
+      }
+
+      // Fallback: max recording duration check
+      if (this.isRecording) {
+        const recordingDuration = now - this.recordingStartTime;
+        if (recordingDuration > this.maxRecordingDuration) {
+          console.log('🎤 🛑 Stopping recording due to max duration:', recordingDuration, 'ms');
+          this.stopRecordingSegment();
+          this.onSpeechActivity?.(false);
         }
       }
     };
 
     this.vadCheckInterval = window.setInterval(checkVoiceActivity, 50);
+  }
+
+  private startWordBasedDetection(): void {
+    // Start checking for new words every second
+    this.transcriptionCheckInterval = window.setInterval(async () => {
+      if (!this.isRecording || !this.onTranscriptionCheck) return;
+
+      try {
+        // Get current audio chunk for transcription check
+        const currentBlob = new Blob(this.chunks, { type: 'audio/webm;codecs=opus' });
+        if (currentBlob.size > 0) {
+          const transcript = await this.onTranscriptionCheck(currentBlob);
+          
+          console.log('🎤 📝 Transcript check:', { 
+            current: transcript, 
+            last: this.lastTranscript,
+            hasNewWords: transcript !== this.lastTranscript && transcript.length > this.lastTranscript.length
+          });
+          
+          // Check if we have new words
+          if (transcript && transcript !== this.lastTranscript && transcript.length > this.lastTranscript.length) {
+            this.lastWordTime = Date.now();
+            this.lastTranscript = transcript;
+            console.log('🎤 📝 NEW WORDS detected:', transcript);
+          } else {
+            // Check if we've been silent (no new words) for too long
+            const timeSinceLastWord = Date.now() - this.lastWordTime;
+            if (timeSinceLastWord > this.wordSilenceThreshold) {
+              console.log('🎤 🛑 STOPPING - No new words for', timeSinceLastWord, 'ms');
+              this.stopRecordingSegment();
+              this.onSpeechActivity?.(false);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('🎤 ❌ Transcription check error:', error);
+      }
+    }, this.transcriptCheckDuration);
   }
 
   private startRecordingSegment(): void {
@@ -302,6 +314,12 @@ export class AudioRecorder {
   }
 
   private stopRecordingSegment(): void {
+    // Clear transcription checking
+    if (this.transcriptionCheckInterval) {
+      clearInterval(this.transcriptionCheckInterval);
+      this.transcriptionCheckInterval = null;
+    }
+
     if (this.mediaRecorder && this.isRecording) {
       console.log('🎤 🛑 Stopping MediaRecorder, state before:', this.mediaRecorder.state);
       if (this.mediaRecorder.state === 'recording') {
@@ -312,6 +330,10 @@ export class AudioRecorder {
     } else {
       console.log('🎤 ⚠️ No MediaRecorder to stop or not recording');
     }
+
+    // Reset transcript tracking
+    this.lastTranscript = '';
+    this.lastWordTime = 0;
   }
 
   async startRecording(): Promise<void> {
@@ -331,6 +353,12 @@ export class AudioRecorder {
     if (this.vadCheckInterval) {
       clearInterval(this.vadCheckInterval);
       this.vadCheckInterval = null;
+    }
+
+    // Clear transcription checking
+    if (this.transcriptionCheckInterval) {
+      clearInterval(this.transcriptionCheckInterval);
+      this.transcriptionCheckInterval = null;
     }
 
     // Stop any current recording
