@@ -188,8 +188,8 @@ export class AudioRecorder {
         this.lastSpeechTime = now;
         
         // Start recording if not already recording
-        if (!this.isRecording) {
-          console.log('🎤 Starting recording due to speech detection');
+        if (!this.isRecording && this.isContinuousMode) {
+          console.log('🎤 ✅ TRIGGERING RECORDING due to speech detection - volume:', normalizedVolume.toFixed(4));
           this.startRecordingSegment();
           this.onSpeechActivity?.(true);
           this.isCurrentlySpeaking = true;
@@ -212,9 +212,17 @@ export class AudioRecorder {
   }
 
   private startRecordingSegment(): void {
-    if (!this.stream || this.isRecording) return;
+    if (!this.stream || this.isRecording || !this.isContinuousMode) {
+      console.log('🎤 ❌ Cannot start recording:', {
+        hasStream: !!this.stream,
+        isRecording: this.isRecording,
+        isContinuous: this.isContinuousMode
+      });
+      return;
+    }
 
     try {
+      console.log('🎤 🚀 CREATING MediaRecorder...');
       this.mediaRecorder = new MediaRecorder(this.stream, {
         mimeType: 'audio/webm;codecs=opus'
       });
@@ -222,24 +230,32 @@ export class AudioRecorder {
       this.chunks = [];
 
       this.mediaRecorder.ondataavailable = (event) => {
+        console.log('🎤 📦 Data chunk received:', event.data.size, 'bytes');
         if (event.data.size > 0) {
           this.chunks.push(event.data);
         }
       };
 
       this.mediaRecorder.onstop = () => {
+        console.log('🎤 🛑 MediaRecorder stopped, chunks:', this.chunks.length);
         if (this.chunks.length > 0) {
           const audioBlob = new Blob(this.chunks, { type: 'audio/webm;codecs=opus' });
-          console.log('🎤 Speech segment captured:', audioBlob.size, 'bytes');
+          console.log('🎤 ✅ Speech segment captured:', audioBlob.size, 'bytes - CALLING CALLBACK');
           this.onDataAvailable?.(audioBlob);
+        } else {
+          console.log('🎤 ⚠️ No chunks available - no audio captured');
         }
         this.chunks = [];
       };
 
-      this.mediaRecorder.start();
+      this.mediaRecorder.onerror = (event) => {
+        console.error('🎤 ❌ MediaRecorder error:', event);
+      };
+
+      this.mediaRecorder.start(100); // Request data every 100ms
       this.isRecording = true;
       this.recordingStartTime = Date.now(); // Track when recording started
-      console.log('Started recording speech segment');
+      console.log('🎤 ✅ Recording started successfully, state:', this.mediaRecorder.state);
     } catch (error) {
       console.error('Error starting recording segment:', error);
     }
@@ -247,9 +263,14 @@ export class AudioRecorder {
 
   private stopRecordingSegment(): void {
     if (this.mediaRecorder && this.isRecording) {
-      this.mediaRecorder.stop();
+      console.log('🎤 🛑 Stopping MediaRecorder, state before:', this.mediaRecorder.state);
+      if (this.mediaRecorder.state === 'recording') {
+        this.mediaRecorder.stop();
+      }
       this.isRecording = false;
-      console.log('Stopped recording speech segment');
+      console.log('🎤 ✅ Recording segment stopped');
+    } else {
+      console.log('🎤 ⚠️ No MediaRecorder to stop or not recording');
     }
   }
 
