@@ -111,14 +111,15 @@ export class AudioRecorder {
   private vadCheckInterval: number | null = null;
   private transcriptionCheckInterval: number | null = null;
   private lastWordTime = 0;
-  private wordSilenceThreshold = 6000; // 6 seconds of no new words (much longer pause)
+  private transcriptStabilityThreshold = 3000; // 3 seconds of no transcript changes
   private volumeThreshold = 0.01; // Basic threshold for initial speech detection
   private isCurrentlySpeaking = false;
-  private maxRecordingDuration = 60000; // 60 seconds max per segment 
-  private minRecordingDuration = 4000; // Minimum 4 seconds before allowing stop
+  private maxRecordingDuration = 45000; // 45 seconds max per segment 
+  private minRecordingDuration = 2000; // Minimum 2 seconds before allowing stop
   private recordingStartTime = 0;
   private lastTranscript = '';
-  private transcriptCheckDuration = 2000; // Check every 2 seconds to reduce frequency
+  private lastTranscriptChangeTime = 0;
+  private transcriptCheckDuration = 1000; // Check every 1 second for faster response
   private volumeHistory: number[] = [];
   private readonly volumeHistorySize = 5;
   private isProcessingTranscription = false; // Prevent overlapping transcription checks
@@ -209,7 +210,7 @@ export class AudioRecorder {
         if (!this.isRecording && this.isContinuousMode) {
           console.log('🎤 ✅ TRIGGERING RECORDING - volume:', smoothedVolume.toFixed(4));
           this.startRecordingSegment();
-          this.startWordBasedDetection();
+          this.startTranscriptBasedDetection();
           this.onSpeechActivity?.(true);
         }
       }
@@ -229,8 +230,8 @@ export class AudioRecorder {
     this.vadCheckInterval = window.setInterval(checkVoiceActivity, 100);
   }
 
-  private startWordBasedDetection(): void {
-    // Start checking for new words every 2 seconds
+  private startTranscriptBasedDetection(): void {
+    // Check transcript for completion every 1 second
     this.transcriptionCheckInterval = window.setInterval(async () => {
       if (!this.isRecording || !this.onTranscriptionCheck || this.isProcessingTranscription) return;
 
@@ -240,41 +241,26 @@ export class AudioRecorder {
         const currentBlob = new Blob(this.chunks, { type: 'audio/webm;codecs=opus' });
         if (currentBlob.size > 0) {
           const transcript = await this.onTranscriptionCheck(currentBlob);
+          const now = Date.now();
           
-          // Only log significant transcript changes
-          if (transcript && transcript.length > this.lastTranscript.length + 5) {
-            console.log('🎤 📝 Transcript update:', { 
-              current: transcript, 
-              last: this.lastTranscript
+          if (transcript && transcript !== this.lastTranscript) {
+            // Transcript has changed - update tracking
+            this.lastTranscriptChangeTime = now;
+            
+            console.log('🎤 📝 Transcript updated:', { 
+              previous: this.lastTranscript.slice(-30), 
+              current: transcript.slice(-30),
+              length: transcript.length
             });
+            
+            this.lastTranscript = transcript;
           }
           
-          // Check if we have meaningful new words (require much more substantial progress)
-          if (transcript && transcript.length > 25 && 
-              transcript.length > this.lastTranscript.length + 10) {
-            this.lastWordTime = Date.now();
-            this.lastTranscript = transcript;
-            console.log('🎤 📝 NEW WORDS detected, continuing...', transcript.slice(-50));
-          } else {
-            // Only consider stopping if:
-            // 1. We've been recording for at least minimum duration
-            // 2. We have substantial content (more than just noise)
-            // 3. We've been silent for the threshold time
-            const recordingDuration = Date.now() - this.recordingStartTime;
-            const timeSinceLastWord = Date.now() - this.lastWordTime;
-            const hasSubstantialContent = transcript && transcript.length > 30;
-            
-            if (recordingDuration > this.minRecordingDuration && 
-                hasSubstantialContent && 
-                timeSinceLastWord > this.wordSilenceThreshold) {
-              console.log('🎤 🛑 STOPPING - Complete thought detected:', {
-                duration: recordingDuration,
-                silenceTime: timeSinceLastWord,
-                finalLength: transcript?.length
-              });
-              this.stopRecordingSegment();
-              this.onSpeechActivity?.(false);
-            }
+          // Check if we should stop based on transcript analysis
+          if (this.shouldStopBasedOnTranscript(transcript, now)) {
+            console.log('🎤 🛑 STOPPING - Complete thought detected via transcript analysis');
+            this.stopRecordingSegment();
+            this.onSpeechActivity?.(false);
           }
         }
       } catch (error) {
@@ -283,6 +269,73 @@ export class AudioRecorder {
         this.isProcessingTranscription = false;
       }
     }, this.transcriptCheckDuration);
+  }
+
+  private shouldStopBasedOnTranscript(transcript: string, now: number): boolean {
+    const recordingDuration = now - this.recordingStartTime;
+    const timeSinceLastChange = now - this.lastTranscriptChangeTime;
+    
+    // Don't stop if recording is too short
+    if (recordingDuration < this.minRecordingDuration) {
+      return false;
+    }
+    
+    // Don't process if transcript is too short or empty
+    if (!transcript || transcript.trim().length < 10) {
+      return false;
+    }
+    
+    // Check for natural completion indicators
+    const hasCompletionMarkers = this.hasNaturalCompletion(transcript);
+    const isTranscriptStable = timeSinceLastChange > this.transcriptStabilityThreshold;
+    
+    console.log('🎤 📊 Transcript analysis:', {
+      duration: recordingDuration,
+      timeSinceChange: timeSinceLastChange,
+      hasCompletion: hasCompletionMarkers,
+      isStable: isTranscriptStable,
+      transcriptEnd: transcript.slice(-20)
+    });
+    
+    // Stop if transcript is stable AND has completion markers
+    if (isTranscriptStable && hasCompletionMarkers) {
+      return true;
+    }
+    
+    // Stop if transcript has been stable for longer period (fallback)
+    if (timeSinceLastChange > this.transcriptStabilityThreshold * 2) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  private hasNaturalCompletion(transcript: string): boolean {
+    const trimmed = transcript.trim();
+    if (trimmed.length < 10) return false;
+    
+    // Check for sentence endings
+    const sentenceEndings = /[.!?]\s*$/;
+    if (sentenceEndings.test(trimmed)) {
+      console.log('🎤 ✅ Found sentence ending:', trimmed.slice(-10));
+      return true;
+    }
+    
+    // Check for natural pause words/phrases at the end
+    const pauseWords = /\b(so|well|anyway|okay|alright|um|uh|you know|I think|I guess|that's|and yeah|and so)\s*$/i;
+    if (pauseWords.test(trimmed)) {
+      console.log('🎤 ✅ Found natural pause word:', trimmed.slice(-15));
+      return true;
+    }
+    
+    // Check for complete clauses (basic pattern)
+    const completePatterns = /\b(that's it|that's all|I'm done|finished|complete|ready)\s*$/i;
+    if (completePatterns.test(trimmed)) {
+      console.log('🎤 ✅ Found completion phrase:', trimmed.slice(-15));
+      return true;
+    }
+    
+    return false;
   }
 
   private startRecordingSegment(): void {
@@ -355,7 +408,7 @@ export class AudioRecorder {
 
     // Reset transcript tracking
     this.lastTranscript = '';
-    this.lastWordTime = 0;
+    this.lastTranscriptChangeTime = 0;
   }
 
   async startRecording(): Promise<void> {
