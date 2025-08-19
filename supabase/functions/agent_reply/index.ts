@@ -92,6 +92,133 @@ Be imaginative, forward-thinking, and bold. Don't be afraid to speculate. Connec
 Be curious, probing, and engaging. Ask "why" and "how" frequently. Look for interesting angles and unexplored dimensions. Make the conversation feel dynamic and discovering.`
 };
 
+// Conversation dynamics and curiosity detection functions
+function detectCuriosityTriggers(userMessage: string, conversationHistory: any[]): any[] {
+  const triggers: any[] = [];
+  const text = userMessage.toLowerCase();
+  
+  // Ambiguity detection
+  const ambiguityPatterns = [
+    /we're working on (something|things|stuff|it)/i,
+    /it's (kind of|sort of|somewhat|pretty|fairly)/i,
+    /we have (some|a few|several) (issues|problems|challenges)/i,
+    /(maybe|perhaps|probably|might) (work|help|be)/i
+  ];
+  
+  ambiguityPatterns.forEach(pattern => {
+    if (pattern.test(userMessage)) {
+      triggers.push({
+        type: 'ambiguity',
+        confidence: 0.7,
+        reason: 'Vague language detected',
+        followup_suggestion: 'Ask for specific details about what they mentioned'
+      });
+    }
+  });
+
+  // Surprising claims detection
+  const surprisingPatterns = [
+    /(\d+)% (increase|improvement|growth)/i,
+    /(first|only|never) (company|person|team)/i,
+    /(billion|million) (users|dollars|customers)/i,
+    /(breakthrough|revolutionary|unprecedented)/i
+  ];
+  
+  surprisingPatterns.forEach(pattern => {
+    if (pattern.test(userMessage)) {
+      triggers.push({
+        type: 'surprising_claim',
+        confidence: 0.8,
+        reason: 'Potentially significant claim made',
+        followup_suggestion: 'Ask for more context or validation of the claim'
+      });
+    }
+  });
+
+  // Missing metrics detection
+  const metricMentions = [
+    /(users|customers|revenue|growth|performance)/i,
+    /(fast|slow|good|bad|better|worse)/i,
+    /(successful|failed|working|broken)/i
+  ];
+  
+  if (metricMentions.some(p => p.test(userMessage))) {
+    const hasNumbers = /\d+(\.\d+)?[%$kmb]?/i.test(userMessage);
+    if (!hasNumbers) {
+      triggers.push({
+        type: 'missing_metric',
+        confidence: 0.7,
+        reason: 'Qualitative claims without quantitative backing',
+        followup_suggestion: 'Ask for specific numbers or metrics'
+      });
+    }
+  }
+
+  return triggers;
+}
+
+function detectCallbackOpportunities(userMessage: string, memories: any[]): any[] {
+  const triggers: any[] = [];
+  
+  if (!memories || memories.length === 0) return triggers;
+  
+  const text = userMessage.toLowerCase();
+  
+  // Look for opportunities to reference past conversations
+  memories.forEach(memory => {
+    const memoryTags = memory.tags || [];
+    
+    // Topic overlap detection
+    const topicOverlap = memoryTags.some((tag: string) => 
+      text.includes(tag.toLowerCase()) || 
+      tag.toLowerCase().split(' ').some((word: string) => text.includes(word))
+    );
+    
+    if (topicOverlap) {
+      triggers.push({
+        type: 'callback_opportunity',
+        confidence: 0.8,
+        reason: `Similar topic discussed: ${memoryTags.join(', ')}`,
+        followup_suggestion: `Reference the previous discussion about ${memoryTags[0]} and build on it`
+      });
+    }
+  });
+  
+  return triggers;
+}
+
+function generateConversationDynamics(
+  triggers: any[], 
+  messageCount: number,
+  lastPerspectiveShift: number = 0
+): string {
+  let dynamics = '';
+  
+  // Curiosity triggers
+  const highConfidenceTriggers = triggers.filter(t => t.confidence >= 0.7);
+  if (highConfidenceTriggers.length > 0) {
+    const trigger = highConfidenceTriggers[0]; // Use the first high-confidence trigger
+    dynamics += `\n\nCURIOSITY TRIGGER DETECTED (${trigger.type}): ${trigger.followup_suggestion}`;
+  }
+  
+  // Callback opportunities
+  const callbacks = triggers.filter(t => t.type === 'callback_opportunity');
+  if (callbacks.length > 0 && messageCount % 5 === 0) { // Every 5th message
+    dynamics += `\n\nCALLBACK OPPORTUNITY: ${callbacks[0].followup_suggestion}`;
+  }
+  
+  // Perspective shifts (every 8-10 messages, with cooldown)
+  const shouldPerspectiveShift = messageCount > 6 && 
+    (messageCount - lastPerspectiveShift) >= 8 && 
+    Math.random() < 0.3; // 30% chance when conditions are met
+    
+  if (shouldPerspectiveShift) {
+    dynamics += `\n\nPERSPECTIVE SHIFT: Consider offering a contrarian view or alternative angle to spark deeper thinking. Be thoughtful and constructive.`;
+  }
+  
+  return dynamics;
+}
+
 // Function calling schema for conversation analysis
 const EXTRACT_FUNCTION_SCHEMA = {
   type: "function",
@@ -362,6 +489,54 @@ serve(async (req) => {
       // Continue without memory context - not critical
     }
 
+    // Detect curiosity triggers and conversation dynamics
+    let conversationDynamics = '';
+    const messageCount = utterances?.length || 0;
+    
+    try {
+      // Detect curiosity triggers in the current message
+      const curiosityTriggers = detectCuriosityTriggers(user_message, utterances || []);
+      
+      // Detect callback opportunities from memories
+      const callbackTriggers = memoryContext ? 
+        detectCallbackOpportunities(user_message, memoryResponse?.memories || []) : [];
+      
+      // Combine all triggers
+      const allTriggers = [...curiosityTriggers, ...callbackTriggers];
+      
+      // Get last perspective shift from session events
+      const { data: lastShiftEvent } = await supabase
+        .from('events')
+        .select('ts')
+        .eq('session_id', session_id)
+        .eq('kind', 'perspective_shift')
+        .order('ts', { ascending: false })
+        .limit(1);
+      
+      const lastShiftCount = lastShiftEvent?.length ? 
+        Math.floor((Date.now() - new Date(lastShiftEvent[0].ts).getTime()) / (1000 * 60 * 5)) : 0; // Rough message estimate
+      
+      // Generate conversation dynamics instructions
+      conversationDynamics = generateConversationDynamics(allTriggers, messageCount, lastShiftCount);
+      
+      // Log perspective shift if one was triggered
+      if (conversationDynamics.includes('PERSPECTIVE SHIFT')) {
+        await supabase
+          .from('events')
+          .insert({
+            session_id: session_id,
+            kind: 'perspective_shift',
+            payload: { message_count: messageCount, triggers: allTriggers.length }
+          });
+      }
+      
+      console.log(`Conversation dynamics: ${allTriggers.length} triggers detected`);
+      
+    } catch (dynamicsError) {
+      console.error('Error generating conversation dynamics:', dynamicsError);
+      // Continue without dynamics - not critical
+    }
+
     // Format messages for AI
     const messages = (utterances || []).map(u => ({
       role: u.speaker === 'agent' ? 'assistant' : 'user',
@@ -378,6 +553,11 @@ serve(async (req) => {
     // Add memory context if available
     if (memoryContext) {
       contextualPrompt += memoryContext;
+    }
+    
+    // Add conversation dynamics instructions
+    if (conversationDynamics) {
+      contextualPrompt += conversationDynamics;
     }
     
     if (isFirstMessage) {
