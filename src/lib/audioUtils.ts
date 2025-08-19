@@ -111,13 +111,14 @@ export class AudioRecorder {
   private vadCheckInterval: number | null = null;
   private transcriptionCheckInterval: number | null = null;
   private lastWordTime = 0;
-  private wordSilenceThreshold = 1500; // 1.5 seconds of no new words
+  private wordSilenceThreshold = 3000; // 3 seconds of no new words
   private volumeThreshold = 0.01; // Basic threshold for initial speech detection
   private isCurrentlySpeaking = false;
-  private maxRecordingDuration = 30000; // 30 seconds max per segment
+  private maxRecordingDuration = 45000; // 45 seconds max per segment
+  private minRecordingDuration = 2000; // Minimum 2 seconds before allowing stop
   private recordingStartTime = 0;
   private lastTranscript = '';
-  private transcriptCheckDuration = 500; // Check for new words every 0.5 seconds
+  private transcriptCheckDuration = 1000; // Check every 1 second
   private volumeHistory: number[] = [];
   private readonly volumeHistorySize = 5;
 
@@ -238,25 +239,37 @@ export class AudioRecorder {
         if (currentBlob.size > 0) {
           const transcript = await this.onTranscriptionCheck(currentBlob);
           
-          // Reduce logging for transcription checks
-          if (transcript !== this.lastTranscript) {
+          // Only log significant transcript changes
+          if (transcript && transcript.length > this.lastTranscript.length + 5) {
             console.log('🎤 📝 Transcript update:', { 
               current: transcript, 
               last: this.lastTranscript
             });
           }
           
-          // Check if we have meaningful new words (more substantial than just single letters)
-          if (transcript && transcript.length > 2 && 
-              (transcript !== this.lastTranscript && transcript.length > this.lastTranscript.length)) {
+          // Check if we have meaningful new words (require substantial progress)
+          if (transcript && transcript.length > 10 && 
+              transcript.length > this.lastTranscript.length + 3) {
             this.lastWordTime = Date.now();
             this.lastTranscript = transcript;
             console.log('🎤 📝 NEW WORDS detected:', transcript);
           } else {
-            // Check if we've been silent (no new words) for too long
+            // Only consider stopping if:
+            // 1. We've been recording for at least minimum duration
+            // 2. We have a reasonable amount of content
+            // 3. We've been silent for the threshold time
+            const recordingDuration = Date.now() - this.recordingStartTime;
             const timeSinceLastWord = Date.now() - this.lastWordTime;
-            if (timeSinceLastWord > this.wordSilenceThreshold) {
-              console.log('🎤 🛑 STOPPING - No new words for', timeSinceLastWord, 'ms');
+            const hasMinimumContent = transcript && transcript.length > 5;
+            
+            if (recordingDuration > this.minRecordingDuration && 
+                hasMinimumContent && 
+                timeSinceLastWord > this.wordSilenceThreshold) {
+              console.log('🎤 🛑 STOPPING - Complete thought detected:', {
+                duration: recordingDuration,
+                silenceTime: timeSinceLastWord,
+                transcript: transcript
+              });
               this.stopRecordingSegment();
               this.onSpeechActivity?.(false);
             }
