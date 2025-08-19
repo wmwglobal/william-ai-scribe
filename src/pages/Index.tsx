@@ -18,6 +18,9 @@ const Index = () => {
               <span className="font-bold text-lg">William MacDonald White</span>
             </div>
             <nav className="hidden md:flex items-center gap-6">
+              <Link to="/personalities" className="text-muted-foreground hover:text-foreground transition-colors">
+                Personalities
+              </Link>
               <Link to="/admin" className="text-muted-foreground hover:text-foreground transition-colors">
                 Dashboard
               </Link>
@@ -52,10 +55,12 @@ const Index = () => {
                     Start Conversation
                   </Button>
                 </Link>
-                <Button variant="outline" size="lg" className="w-full sm:w-auto bg-white/10 border-white/20 text-white hover:bg-white/20">
-                  <Sparkles className="w-5 h-5 mr-2" />
-                  See Personalities
-                </Button>
+                <Link to="/personalities">
+                  <Button variant="outline" size="lg" className="w-full sm:w-auto bg-white/10 border-white/20 text-white hover:bg-white/20">
+                    <Sparkles className="w-5 h-5 mr-2" />
+                    See Personalities
+                  </Button>
+                </Link>
               </div>
             </div>
             
@@ -165,21 +170,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 bg-muted/30">
-        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Experience the Future of AI Conversation?</h2>
-          <p className="text-xl text-muted-foreground mb-8">
-            Start chatting with William's AI twin and experience conversations that remember, adapt, and engage.
-          </p>
-          <Link to="/chat">
-            <Button size="lg" className="shadow-glow">
-              <Brain className="w-5 h-5 mr-2" />
-              Start Your Conversation
-            </Button>
-          </Link>
-        </div>
-      </section>
 
       {/* Footer */}
       <footer className="bg-card border-t py-8">
@@ -193,8 +183,9 @@ const Index = () => {
             </div>
             <nav className="flex items-center gap-6 text-sm text-muted-foreground">
               <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
+              <Link to="/personalities" className="hover:text-foreground transition-colors">Personalities</Link>
               <Link to="/admin" className="hover:text-foreground transition-colors">Dashboard</Link>
-              <span>© 2024 William White. All rights reserved.</span>
+              <span>© 2025 WMW Global Technologies Inc. All rights reserved.</span>
             </nav>
           </div>
         </div>

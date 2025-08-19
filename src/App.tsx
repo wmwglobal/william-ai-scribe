@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Chat from "./pages/Chat";
 import Admin from "./pages/Admin";
+import Personalities from "./pages/Personalities";
 import NotFound from "./pages/NotFound";
 
 const App = () => {
@@ -11,6 +12,7 @@ const App = () => {
         <Route path="/" element={<Index />} />
         <Route path="/chat" element={<Chat />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/personalities" element={<Personalities />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
