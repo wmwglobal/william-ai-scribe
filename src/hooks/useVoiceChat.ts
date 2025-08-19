@@ -56,10 +56,7 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
       // Transcription check function for word-based detection
       async (audioBlob: Blob): Promise<string> => {
         try {
-          console.log('🎤 📝 Quick transcription check for blob:', audioBlob.size, 'bytes');
-          
           if (!sessionId || !sessionSecret) {
-            console.log('🎤 📝 No session - skipping transcription check');
             return '';
           }
 
@@ -79,7 +76,6 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
           }
 
           const transcript = data.text?.trim() || '';
-          console.log('🎤 📝 Quick transcription result:', transcript);
           return transcript;
         } catch (error) {
           console.error('🎤 📝 Transcription check failed:', error);

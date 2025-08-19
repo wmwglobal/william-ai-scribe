@@ -176,6 +176,7 @@ export class AudioRecorder {
 
     const bufferLength = this.analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
+    let lastLogTime = 0;
 
     const checkVoiceActivity = () => {
       if (!this.analyser || !this.isContinuousMode) return;
@@ -190,15 +191,15 @@ export class AudioRecorder {
       const now = Date.now();
       const isSpeaking = smoothedVolume > this.volumeThreshold;
 
-      if (smoothedVolume > 0.002) {
-        console.log('🎤 Voice Activity:', {
-          raw: normalizedVolume.toFixed(4),
+      // Reduce logging frequency to prevent UI overload
+      if (smoothedVolume > 0.002 && now - lastLogTime > 1000) {
+        console.log('🎤 Voice Activity Summary:', {
           smoothed: smoothedVolume.toFixed(4),
           threshold: this.volumeThreshold,
           isSpeaking,
-          isRecording: this.isRecording,
-          timeSinceLastWord: now - this.lastWordTime
+          isRecording: this.isRecording
         });
+        lastLogTime = now;
       }
 
       if (isSpeaking) {
@@ -222,7 +223,8 @@ export class AudioRecorder {
       }
     };
 
-    this.vadCheckInterval = window.setInterval(checkVoiceActivity, 50);
+    // Reduce frequency from 50ms to 100ms to improve performance
+    this.vadCheckInterval = window.setInterval(checkVoiceActivity, 100);
   }
 
   private startWordBasedDetection(): void {
@@ -236,11 +238,13 @@ export class AudioRecorder {
         if (currentBlob.size > 0) {
           const transcript = await this.onTranscriptionCheck(currentBlob);
           
-          console.log('🎤 📝 Transcript check:', { 
-            current: transcript, 
-            last: this.lastTranscript,
-            hasNewWords: transcript !== this.lastTranscript && transcript.length > this.lastTranscript.length
-          });
+          // Reduce logging for transcription checks
+          if (transcript !== this.lastTranscript) {
+            console.log('🎤 📝 Transcript update:', { 
+              current: transcript, 
+              last: this.lastTranscript
+            });
+          }
           
           // Check if we have meaningful new words (more substantial than just single letters)
           if (transcript && transcript.length > 2 && 
