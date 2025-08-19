@@ -58,6 +58,19 @@ serve(async (req) => {
   }
 
   try {
+    // Enhanced rate limiting with multiple identifiers
+    const forwarded = req.headers.get('x-forwarded-for');
+    const realIp = req.headers.get('x-real-ip');
+    const clientId = forwarded || realIp || 'unknown';
+    
+    if (!checkRateLimit(clientId)) {
+      console.warn('Rate limit exceeded for client:', clientId);
+      return new Response('Rate limit exceeded. Please try again later.', { 
+        status: 429, 
+        headers: { ...responseHeaders, 'Retry-After': '60' }
+      });
+    }
+    
     const { session_id, session_secret, audio_base64, model } = await req.json();
 
     if (!session_id || !session_secret || !audio_base64) {

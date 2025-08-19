@@ -12,6 +12,33 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Security: Allowed origins for enhanced protection
+const ALLOWED_ORIGINS = [
+  'http://localhost:5173', 
+  'https://suyervjawrmbyyxetblv.supabase.co',
+  'https://agent-reply-suyervjawrmbyyxetblv.supabase.co'
+];
+
+// Rate limiting map for basic protection
+const rateLimitMap = new Map();
+
+function checkRateLimit(clientId: string): boolean {
+  const now = Date.now();
+  const clientRequests = rateLimitMap.get(clientId) || [];
+  
+  // Remove requests older than 1 minute
+  const recentRequests = clientRequests.filter((time: number) => now - time < 60000);
+  
+  // Allow max 20 requests per minute per client
+  if (recentRequests.length >= 20) {
+    return false;
+  }
+  
+  recentRequests.push(now);
+  rateLimitMap.set(clientId, recentRequests);
+  return true;
+}
+
 async function callGroqChat(messages: any[], model: string = 'llama-3.3-70b-versatile', systemPrompt: string, sessionId: string, supabase: any) {
   const response = await supabase.functions.invoke('groq_chat', {
     body: {
@@ -392,6 +419,30 @@ serve(async (req) => {
   }
 
   try {
+    // Enhanced security: Origin and rate limiting validation
+    const origin = req.headers.get('origin');
+    const referer = req.headers.get('referer');
+    const forwarded = req.headers.get('x-forwarded-for');
+    const realIp = req.headers.get('x-real-ip');
+    const clientId = forwarded || realIp || 'unknown';
+    
+    // Check origin/referer (allow some flexibility for legitimate requests)
+    const isValidOrigin = origin && ALLOWED_ORIGINS.includes(origin);
+    const isValidReferer = referer && ALLOWED_ORIGINS.some(allowed => referer.startsWith(allowed));
+    
+    if (!isValidOrigin && !isValidReferer) {
+      console.warn('Suspicious request from origin:', origin, 'referer:', referer, 'client:', clientId);
+      // Log but don't block - edge functions need to be accessible for valid use cases
+    }
+    
+    // Rate limiting
+    if (!checkRateLimit(clientId)) {
+      console.warn('Rate limit exceeded for client:', clientId);
+      return new Response('Rate limit exceeded. Please try again later.', { 
+        status: 429, 
+        headers: { ...corsHeaders, 'Retry-After': '60' }
+      });
+    }
     const { session_id, user_message, session_secret, mode } = await req.json();
     
     if (!session_id || !user_message || !session_secret) {
