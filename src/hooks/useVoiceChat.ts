@@ -8,6 +8,7 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
   const [sessionSecret, setSessionSecret] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isSpeechActive, setIsSpeechActive] = useState(false); // Voice activity detection
   const [isTyping, setIsTyping] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentIntent, setCurrentIntent] = useState<string | null>(null);
@@ -40,6 +41,9 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
       },
       (recording) => {
         if (isMountedRef.current) setIsRecording(recording);
+      },
+      (speechActive) => {
+        if (isMountedRef.current) setIsSpeechActive(speechActive);
       }
     );
     audioRecorderRef.current = recorder;
@@ -266,17 +270,17 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
   async function startRecording() {
     try {
       if (audioRecorderRef.current) {
-        await audioRecorderRef.current.startRecording();
+        await audioRecorderRef.current.startContinuousListening();
       }
     } catch (error) {
-      console.error('Error starting recording:', error);
+      console.error('Error starting continuous listening:', error);
       throw error;
     }
   }
 
   function stopRecording() {
     if (audioRecorderRef.current) {
-      audioRecorderRef.current.stopRecording();
+      audioRecorderRef.current.stopContinuousListening();
     }
   }
 
@@ -306,6 +310,7 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
     sessionId,
     isRecording,
     isSpeaking,
+    isSpeechActive,
     isTyping,
     isProcessing,
     currentIntent,

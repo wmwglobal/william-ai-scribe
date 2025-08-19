@@ -104,13 +104,22 @@ export class AudioRecorder {
   private stream: MediaStream | null = null;
   private chunks: Blob[] = [];
   private isRecording = false;
+  private isContinuousMode = false;
+  private audioContext: AudioContext | null = null;
+  private analyser: AnalyserNode | null = null;
+  private source: MediaStreamAudioSourceNode | null = null;
+  private vadCheckInterval: number | null = null;
+  private lastSpeechTime = 0;
+  private silenceThreshold = 1000; // 1 second of silence before processing
+  private volumeThreshold = 0.01; // Minimum volume to consider as speech
 
   constructor(
     private onDataAvailable?: (audioBlob: Blob) => void,
-    private onRecordingChange?: (isRecording: boolean) => void
+    private onRecordingChange?: (isRecording: boolean) => void,
+    private onSpeechActivity?: (isSpeaking: boolean) => void
   ) {}
 
-  async startRecording(): Promise<void> {
+  async startContinuousListening(): Promise<void> {
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -122,6 +131,66 @@ export class AudioRecorder {
         }
       });
 
+      // Set up audio context for voice activity detection
+      this.audioContext = new AudioContext();
+      this.source = this.audioContext.createMediaStreamSource(this.stream);
+      this.analyser = this.audioContext.createAnalyser();
+      this.analyser.fftSize = 256;
+      this.source.connect(this.analyser);
+
+      this.isContinuousMode = true;
+      this.onRecordingChange?.(true);
+      
+      // Start voice activity detection
+      this.startVoiceActivityDetection();
+      
+      console.log('Continuous listening started');
+    } catch (error) {
+      console.error('Error starting continuous listening:', error);
+      throw new Error('Failed to start continuous listening. Please check microphone permissions.');
+    }
+  }
+
+  private startVoiceActivityDetection(): void {
+    if (!this.analyser) return;
+
+    const bufferLength = this.analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+
+    const checkVoiceActivity = () => {
+      if (!this.analyser || !this.isContinuousMode) return;
+
+      this.analyser.getByteFrequencyData(dataArray);
+      
+      // Calculate average volume
+      const average = dataArray.reduce((a, b) => a + b) / bufferLength;
+      const normalizedVolume = average / 255;
+
+      const now = Date.now();
+      const isSpeaking = normalizedVolume > this.volumeThreshold;
+
+      if (isSpeaking) {
+        this.lastSpeechTime = now;
+        
+        // Start recording if not already recording
+        if (!this.isRecording) {
+          this.startRecordingSegment();
+          this.onSpeechActivity?.(true);
+        }
+      } else if (this.isRecording && (now - this.lastSpeechTime) > this.silenceThreshold) {
+        // Stop recording after silence threshold
+        this.stopRecordingSegment();
+        this.onSpeechActivity?.(false);
+      }
+    };
+
+    this.vadCheckInterval = window.setInterval(checkVoiceActivity, 100);
+  }
+
+  private startRecordingSegment(): void {
+    if (!this.stream || this.isRecording) return;
+
+    try {
       this.mediaRecorder = new MediaRecorder(this.stream, {
         mimeType: 'audio/webm;codecs=opus'
       });
@@ -135,40 +204,80 @@ export class AudioRecorder {
       };
 
       this.mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(this.chunks, { type: 'audio/webm;codecs=opus' });
-        console.log('🎤 Audio blob created:', audioBlob.size, 'bytes');
-        this.onDataAvailable?.(audioBlob);
+        if (this.chunks.length > 0) {
+          const audioBlob = new Blob(this.chunks, { type: 'audio/webm;codecs=opus' });
+          console.log('🎤 Speech segment captured:', audioBlob.size, 'bytes');
+          this.onDataAvailable?.(audioBlob);
+        }
         this.chunks = [];
       };
 
       this.mediaRecorder.start();
       this.isRecording = true;
-      this.onRecordingChange?.(true);
-      
-      console.log('Recording started');
+      console.log('Started recording speech segment');
     } catch (error) {
-      console.error('Error starting recording:', error);
-      throw new Error('Failed to start recording. Please check microphone permissions.');
+      console.error('Error starting recording segment:', error);
     }
   }
 
-  stopRecording(): void {
+  private stopRecordingSegment(): void {
     if (this.mediaRecorder && this.isRecording) {
       this.mediaRecorder.stop();
       this.isRecording = false;
-      this.onRecordingChange?.(false);
-      
-      if (this.stream) {
-        this.stream.getTracks().forEach(track => track.stop());
-        this.stream = null;
-      }
-      
-      console.log('Recording stopped');
+      console.log('Stopped recording speech segment');
     }
   }
 
+  async startRecording(): Promise<void> {
+    // Legacy method for backward compatibility
+    await this.startContinuousListening();
+  }
+
+  stopRecording(): void {
+    // Stop any current recording segment
+    this.stopRecordingSegment();
+  }
+
+  stopContinuousListening(): void {
+    this.isContinuousMode = false;
+    
+    // Clear voice activity detection
+    if (this.vadCheckInterval) {
+      clearInterval(this.vadCheckInterval);
+      this.vadCheckInterval = null;
+    }
+
+    // Stop any current recording
+    this.stopRecordingSegment();
+
+    // Clean up audio context
+    if (this.source) {
+      this.source.disconnect();
+      this.source = null;
+    }
+    if (this.audioContext) {
+      this.audioContext.close();
+      this.audioContext = null;
+    }
+    this.analyser = null;
+
+    // Stop media stream
+    if (this.stream) {
+      this.stream.getTracks().forEach(track => track.stop());
+      this.stream = null;
+    }
+
+    this.onRecordingChange?.(false);
+    this.onSpeechActivity?.(false);
+    console.log('Continuous listening stopped');
+  }
+
   getIsRecording(): boolean {
-    return this.isRecording;
+    return this.isContinuousMode;
+  }
+
+  getIsSpeaking(): boolean {
+    return this.isRecording; // Currently recording a speech segment
   }
 }
 

@@ -35,6 +35,7 @@ export default function Chat() {
     sessionId,
     isRecording,
     isSpeaking,
+    isSpeechActive,
     isTyping,
     isProcessing,
     currentIntent,
@@ -143,8 +144,10 @@ export default function Chat() {
     try {
       if (isRecording) {
         stopRecording();
+        toast.success('Microphone turned off');
       } else {
         await startRecording();
+        toast.success('Microphone is now listening...');
       }
     } catch (error) {
       toast.error('Microphone access failed');
@@ -220,13 +223,14 @@ export default function Chat() {
             <div>
               <h1 className="font-semibold text-sm">AI William</h1>
               <div className="flex items-center gap-2">
-                <p className="text-xs text-muted-foreground">
-                  {!sessionStarted ? "Ready to start" : 
-                   isSpeaking ? "Speaking..." : "Ready"}
-                </p>
-                <MoodRing currentMode={selectedPersonality.id} />
-                <div className={`w-1.5 h-1.5 rounded-full ${selectedModel.color} bg-gradient-to-r`} />
-                <span className="text-xs text-muted-foreground">{selectedModel.name}</span>
+              <p className="text-xs text-muted-foreground">
+                {!sessionStarted ? "Ready to start" : 
+                 isRecording ? (isSpeechActive ? "Listening..." : "Microphone on") :
+                 isSpeaking ? "Speaking..." : "Microphone off"}
+              </p>
+              <MoodRing currentMode={selectedPersonality.id} />
+              <div className={`w-1.5 h-1.5 rounded-full ${selectedModel.color} bg-gradient-to-r`} />
+              <span className="text-xs text-muted-foreground">{selectedModel.name}</span>
               </div>
             </div>
           </div>
@@ -348,13 +352,14 @@ export default function Chat() {
             </Button>
 
             <Button
-              variant={isRecording ? "destructive" : "outline"}
+              variant={isRecording ? "default" : "outline"}
               size="sm"
               onClick={handleRecordingToggle}
               disabled={!audioEnabled || isProcessing || isTyping}
-              className="flex-shrink-0"
+              className={`flex-shrink-0 ${isRecording ? 'bg-green-600 hover:bg-green-700' : ''}`}
+              title={isRecording ? 'Turn off microphone' : 'Turn on microphone'}
             >
-              {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              {isRecording ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
             </Button>
 
             {isSpeaking && (
@@ -397,16 +402,22 @@ export default function Chat() {
           {/* Status indicators */}
           <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
             <div className="flex items-center gap-4">
+              {isRecording && !isSpeechActive && (
+                <span className="flex items-center gap-1 text-green-600">
+                  <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse" />
+                  Mic on - ready to listen
+                </span>
+              )}
+              {isSpeechActive && (
+                <span className="flex items-center gap-1 text-blue-600">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" />
+                  Speaking detected...
+                </span>
+              )}
               {isProcessing && (
                 <span className="flex items-center gap-1 text-blue-500">
                   <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
                   Processing audio...
-                </span>
-              )}
-              {isRecording && (
-                <span className="flex items-center gap-1 text-red-500">
-                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                  Recording...
                 </span>
               )}
               {isSpeaking && (
