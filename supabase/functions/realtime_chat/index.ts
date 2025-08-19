@@ -30,22 +30,35 @@ serve(async (req) => {
   const connectToOpenAI = () => {
     console.log('🤖 Connecting to OpenAI Realtime API...');
     
+    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    if (!OPENAI_API_KEY) {
+      console.error('🤖 ❌ OPENAI_API_KEY not found');
+      socket.send(JSON.stringify({ 
+        type: 'error', 
+        message: 'OpenAI API key not configured' 
+      }));
+      return;
+    }
+    
+    console.log('🤖 Using OpenAI API key:', OPENAI_API_KEY.substring(0, 10) + '...');
     const openaiUrl = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01";
+    console.log('🤖 Connecting to:', openaiUrl);
+    
     openAISocket = new WebSocket(openaiUrl, [], {
       headers: {
-        "Authorization": `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+        "Authorization": `Bearer ${OPENAI_API_KEY}`,
         "OpenAI-Beta": "realtime=v1"
       }
     });
 
     openAISocket.onopen = () => {
-      console.log('🤖 ✅ Connected to OpenAI Realtime API');
+      console.log('🤖 ✅ Connected to OpenAI Realtime API successfully');
     };
 
     openAISocket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log('🤖 📨 Received from OpenAI:', data.type);
+        console.log('🤖 📨 Received from OpenAI:', data.type, data.error ? `ERROR: ${data.error.message}` : '');
 
         // Configure session after receiving session.created
         if (data.type === 'session.created' && !sessionConfigured) {
@@ -83,22 +96,29 @@ serve(async (req) => {
 
       } catch (error) {
         console.error('🤖 ❌ Error processing OpenAI message:', error);
+        console.error('🤖 ❌ Raw message:', event.data);
       }
     };
 
     openAISocket.onerror = (error) => {
       console.error('🤖 ❌ OpenAI WebSocket error:', error);
+      console.error('🤖 ❌ Error details:', JSON.stringify(error));
       socket.send(JSON.stringify({ 
         type: 'error', 
-        message: 'OpenAI connection error' 
+        message: 'OpenAI connection error: ' + (error.message || 'Unknown error')
       }));
     };
 
     openAISocket.onclose = (event) => {
       console.log('🤖 🔌 OpenAI WebSocket closed:', event.code, event.reason);
+      console.log('🤖 🔌 Close details:', {
+        code: event.code,
+        reason: event.reason,
+        wasClean: event.wasClean
+      });
       socket.send(JSON.stringify({ 
         type: 'error', 
-        message: 'OpenAI connection closed' 
+        message: `OpenAI connection closed: ${event.code} - ${event.reason || 'Unknown reason'}`
       }));
     };
   };

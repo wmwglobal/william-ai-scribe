@@ -175,11 +175,12 @@ export const useRealtimeChat = (audioEnabled: boolean = true) => {
 
       case 'error':
         console.error('🔌 ❌ Server error:', data.message);
+        console.error('🔌 ❌ Full error data:', data);
         toast.error('Server error: ' + data.message);
         break;
 
       default:
-        console.log('🔌 📨 Unhandled message type:', data.type);
+        console.log('🔌 📨 Unhandled message type:', data.type, data);
     }
   };
 
