@@ -125,7 +125,7 @@ export const useRealtimeChat = (audioEnabled: boolean = true) => {
       const hostname = window.location.hostname;
       const projectRef = hostname.includes('localhost') ? 'localhost:54321' : hostname.split('.')[0] + '.functions.supabase.co';
       const protocol = hostname.includes('localhost') ? 'ws' : 'wss';
-      const wsUrl = `${protocol}://${projectRef}/realtime_chat`;
+      const wsUrl = `${protocol}://${projectRef}/functions/v1/realtime_chat`;
       
       console.log('🔌 Connecting to:', wsUrl);
       
