@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,10 +12,15 @@ serve(async (req) => {
   }
 
   try {
+    console.log('🔑 Starting token generation...');
+    
     const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
     if (!OPENAI_API_KEY) {
+      console.error('🔑 ❌ OPENAI_API_KEY not found in environment');
       throw new Error('OPENAI_API_KEY is not set');
     }
+
+    console.log('🔑 API key found, length:', OPENAI_API_KEY.length);
 
     console.log('🔑 Creating OpenAI ephemeral token...');
 
@@ -34,6 +38,8 @@ serve(async (req) => {
       }),
     });
 
+    console.log('🔑 OpenAI response status:', response.status);
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error('🔑 ❌ OpenAI API error:', response.status, errorText);
@@ -42,13 +48,18 @@ serve(async (req) => {
 
     const data = await response.json();
     console.log("🔑 ✅ Session created successfully");
+    console.log("🔑 Response keys:", Object.keys(data));
     
     return new Response(JSON.stringify(data), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error("🔑 ❌ Error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error("🔑 ❌ Error details:", error);
+    console.error("🔑 ❌ Error stack:", error.stack);
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      details: error.toString()
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
