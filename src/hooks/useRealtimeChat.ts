@@ -123,9 +123,15 @@ export const useRealtimeChat = (audioEnabled: boolean = true) => {
       
       // Get project URL and create WebSocket connection  
       const hostname = window.location.hostname;
-      const projectRef = hostname.includes('localhost') ? 'localhost:54321' : hostname.split('.')[0] + '.functions.supabase.co';
-      const protocol = hostname.includes('localhost') ? 'ws' : 'wss';
-      const wsUrl = `${protocol}://${projectRef}/functions/v1/realtime_chat`;
+      let wsUrl;
+      
+      if (hostname.includes('localhost')) {
+        wsUrl = 'ws://localhost:54321/functions/v1/realtime_chat';
+      } else {
+        // Extract project ID from the hostname (format: id-preview--{project-id}.lovable.app)
+        const projectId = hostname.split('--')[1]?.split('.')[0] || 'suyervjawrmbyyxetblv';
+        wsUrl = `wss://${projectId}.functions.supabase.co/functions/v1/realtime_chat`;
+      }
       
       console.log('🔌 Connecting to:', wsUrl);
       
