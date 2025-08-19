@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MessageCircle, Users, TrendingUp, Shield, Mic, Brain, Zap } from 'lucide-react';
+import { MessageCircle, Users, TrendingUp, Shield, Mic, Brain, Zap, Sparkles, History, Target } from 'lucide-react';
 
 const Index = () => {
   return (
@@ -36,24 +36,25 @@ const Index = () => {
             {/* Left Column - Text Content */}
             <div className="text-center lg:text-left text-white">
               <Badge variant="secondary" className="mb-6 text-primary bg-white/20">
-                AI-Powered Conversations
+                Multiple AI Personalities • Memory • Voice
               </Badge>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
-                Chat with AI William
+                Meet AI William
               </h1>
               <p className="text-lg md:text-xl mb-8 text-white/90">
-                Experience intelligent conversations with William's AI twin. Get instant insights on consulting, 
-                partnerships, and business opportunities through natural voice interactions.
+                Experience William MacDonald White's AI twin with multiple personalities—from Entrepreneur to Storyteller. 
+                Advanced memory makes every conversation build on the last, with intelligent curiosity triggers that keep discussions engaging.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                 <Link to="/chat">
                   <Button size="lg" className="w-full sm:w-auto shadow-glow bg-white text-primary hover:bg-white/90">
-                    <Mic className="w-5 h-5 mr-2" />
-                    Start Voice Chat
+                    <Brain className="w-5 h-5 mr-2" />
+                    Start Conversation
                   </Button>
                 </Link>
                 <Button variant="outline" size="lg" className="w-full sm:w-auto bg-white/10 border-white/20 text-white hover:bg-white/20">
-                  Learn More
+                  <Sparkles className="w-5 h-5 mr-2" />
+                  See Personalities
                 </Button>
               </div>
             </div>
@@ -82,9 +83,9 @@ const Index = () => {
       <section className="py-20 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Intelligent Conversation Features</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Advanced AI Conversation System</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Advanced AI capabilities designed to understand your needs and provide meaningful interactions.
+              Multiple personalities, cumulative memory, and intelligent conversation dynamics create truly engaging interactions.
             </p>
           </div>
 
@@ -92,11 +93,11 @@ const Index = () => {
             <Card className="shadow-card">
               <CardContent className="p-6">
                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <MessageCircle className="w-6 h-6 text-primary" />
+                  <Sparkles className="w-6 h-6 text-primary" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Real-time Voice Chat</h3>
+                <h3 className="text-xl font-semibold mb-2">6 AI Personalities</h3>
                 <p className="text-muted-foreground">
-                  Natural voice conversations with advanced speech recognition and text-to-speech capabilities.
+                  Switch between Entrepreneur, Professional, Mentor, Storyteller, Futurist, and Interviewer modes for different conversation styles.
                 </p>
               </CardContent>
             </Card>
@@ -104,11 +105,35 @@ const Index = () => {
             <Card className="shadow-card">
               <CardContent className="p-6">
                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <Brain className="w-6 h-6 text-primary" />
+                  <History className="w-6 h-6 text-primary" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Intent Recognition</h3>
+                <h3 className="text-xl font-semibold mb-2">Cumulative Memory</h3>
                 <p className="text-muted-foreground">
-                  AI-powered intent detection to understand whether you're looking for consulting, partnerships, or advice.
+                  AI remembers your conversations across sessions, building context and understanding over time for truly personalized interactions.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-card">
+              <CardContent className="p-6">
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <Target className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Curiosity Triggers</h3>
+                <p className="text-muted-foreground">
+                  AI detects ambiguity, missing details, and conversation opportunities to ask engaging follow-up questions.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-card">
+              <CardContent className="p-6">
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <MessageCircle className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Voice & Text Chat</h3>
+                <p className="text-muted-foreground">
+                  Natural voice conversations with advanced speech recognition, text-to-speech, and seamless text input.
                 </p>
               </CardContent>
             </Card>
@@ -118,33 +143,9 @@ const Index = () => {
                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                   <TrendingUp className="w-6 h-6 text-primary" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Lead Scoring</h3>
+                <h3 className="text-xl font-semibold mb-2">Smart Analytics</h3>
                 <p className="text-muted-foreground">
-                  Intelligent lead qualification that identifies high-value opportunities automatically.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-card">
-              <CardContent className="p-6">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <Zap className="w-6 h-6 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Smart CTAs</h3>
-                <p className="text-muted-foreground">
-                  Context-aware call-to-actions that suggest booking calls, sharing materials, or next steps.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-card">
-              <CardContent className="p-6">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <Users className="w-6 h-6 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Session Analytics</h3>
-                <p className="text-muted-foreground">
-                  Comprehensive conversation analytics and insights for improving business development.
+                  Lead scoring, intent detection, and conversation insights help identify opportunities and improve interactions.
                 </p>
               </CardContent>
             </Card>
@@ -167,13 +168,13 @@ const Index = () => {
       {/* CTA Section */}
       <section className="py-20 bg-muted/30">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Experience AI William?</h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Experience the Future of AI Conversation?</h2>
           <p className="text-xl text-muted-foreground mb-8">
-            Start a conversation today and discover how AI can enhance your business interactions.
+            Start chatting with William's AI twin and experience conversations that remember, adapt, and engage.
           </p>
           <Link to="/chat">
             <Button size="lg" className="shadow-glow">
-              <Mic className="w-5 h-5 mr-2" />
+              <Brain className="w-5 h-5 mr-2" />
               Start Your Conversation
             </Button>
           </Link>
