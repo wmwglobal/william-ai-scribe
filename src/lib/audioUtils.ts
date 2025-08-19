@@ -111,11 +111,11 @@ export class AudioRecorder {
   private vadCheckInterval: number | null = null;
   private transcriptionCheckInterval: number | null = null;
   private lastWordTime = 0;
-  private wordSilenceThreshold = 4000; // 4 seconds of no new words (longer pause)
+  private wordSilenceThreshold = 6000; // 6 seconds of no new words (much longer pause)
   private volumeThreshold = 0.01; // Basic threshold for initial speech detection
   private isCurrentlySpeaking = false;
-  private maxRecordingDuration = 30000; // 30 seconds max per segment (shorter to prevent long segments)
-  private minRecordingDuration = 3000; // Minimum 3 seconds before allowing stop
+  private maxRecordingDuration = 60000; // 60 seconds max per segment 
+  private minRecordingDuration = 4000; // Minimum 4 seconds before allowing stop
   private recordingStartTime = 0;
   private lastTranscript = '';
   private transcriptCheckDuration = 2000; // Check every 2 seconds to reduce frequency
@@ -249,9 +249,9 @@ export class AudioRecorder {
             });
           }
           
-          // Check if we have meaningful new words (require substantial progress)
-          if (transcript && transcript.length > 15 && 
-              transcript.length > this.lastTranscript.length + 5) {
+          // Check if we have meaningful new words (require much more substantial progress)
+          if (transcript && transcript.length > 25 && 
+              transcript.length > this.lastTranscript.length + 10) {
             this.lastWordTime = Date.now();
             this.lastTranscript = transcript;
             console.log('🎤 📝 NEW WORDS detected, continuing...', transcript.slice(-50));
@@ -262,7 +262,7 @@ export class AudioRecorder {
             // 3. We've been silent for the threshold time
             const recordingDuration = Date.now() - this.recordingStartTime;
             const timeSinceLastWord = Date.now() - this.lastWordTime;
-            const hasSubstantialContent = transcript && transcript.length > 20;
+            const hasSubstantialContent = transcript && transcript.length > 30;
             
             if (recordingDuration > this.minRecordingDuration && 
                 hasSubstantialContent && 
