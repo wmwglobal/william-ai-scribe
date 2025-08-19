@@ -90,7 +90,9 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
       
       // Convert to base64
       const audioBase64 = await audioToBase64(audioBlob);
+      console.log('🎤 Base64 conversion complete, length:', audioBase64.length);
       
+      console.log('🎤 Calling speech_to_text_groq edge function...');
       // Call speech-to-text API
       const { data, error } = await supabase.functions.invoke('speech_to_text_groq', {
         body: {
@@ -100,6 +102,8 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
           model: asrModel
         }
       });
+
+      console.log('🎤 Edge function response:', { data, error });
 
       if (error) {
         console.error('ASR error:', error);
