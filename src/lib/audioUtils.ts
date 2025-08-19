@@ -111,13 +111,13 @@ export class AudioRecorder {
   private vadCheckInterval: number | null = null;
   private transcriptionCheckInterval: number | null = null;
   private lastWordTime = 0;
-  private wordSilenceThreshold = 2000; // 2 seconds of no new words
+  private wordSilenceThreshold = 800; // 0.8 seconds of no new words
   private volumeThreshold = 0.01; // Basic threshold for initial speech detection
   private isCurrentlySpeaking = false;
   private maxRecordingDuration = 30000; // 30 seconds max per segment
   private recordingStartTime = 0;
   private lastTranscript = '';
-  private transcriptCheckDuration = 1000; // Check for new words every 1 second
+  private transcriptCheckDuration = 500; // Check for new words every 0.5 seconds
   private volumeHistory: number[] = [];
   private readonly volumeHistorySize = 5;
 
