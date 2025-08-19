@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AudioPlayer, AudioRecorder, audioToBase64 } from '@/lib/audioUtils';
 import type { CreateSessionResponse, AgentReplyResponse } from '@/lib/types';
@@ -9,48 +9,53 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false); // Prevent concurrent processing
+  const [isProcessing, setIsProcessing] = useState(false);
   const [currentIntent, setCurrentIntent] = useState<string | null>(null);
   const [leadScore, setLeadScore] = useState(0);
   const [latestExtract, setLatestExtract] = useState<any>(null);
   const [transcript, setTranscript] = useState<Array<{speaker: 'visitor' | 'agent', text: string, timestamp: Date}>>([]);
   const [debugCommands, setDebugCommands] = useState<Array<{command: string, timestamp: Date}>>([]);
   
-  const audioPlayer = new AudioPlayer((playing) => setIsSpeaking(playing));
-  const audioRecorder = new AudioRecorder(
-    handleAudioData,
-    (recording) => setIsRecording(recording)
-  );
+  // Use refs to prevent state updates after unmount
+  const isMountedRef = useRef(true);
+  const processingRef = useRef(false);
+  
+  // Initialize audio utilities
+  const audioPlayerRef = useRef<AudioPlayer | null>(null);
+  const audioRecorderRef = useRef<AudioRecorder | null>(null);
 
-  async function createSession(consent: boolean = false): Promise<string> {
-    try {
-      const { data, error } = await supabase.functions.invoke('create_session', {
-        body: {
-          visitor_id: crypto.randomUUID(),
-          consent
-        }
-      });
+  useEffect(() => {
+    isMountedRef.current = true;
+    
+    // Initialize audio player and recorder
+    audioPlayerRef.current = new AudioPlayer((playing) => {
+      if (isMountedRef.current) setIsSpeaking(playing);
+    });
+    
+    audioRecorderRef.current = new AudioRecorder(
+      handleAudioData,
+      (recording) => {
+        if (isMountedRef.current) setIsRecording(recording);
+      }
+    );
 
-      if (error) throw error;
-
-      const response = data as CreateSessionResponse;
-      setSessionId(response.session_id);
-      setSessionSecret(response.session_secret);
-      return response.session_id;
-    } catch (error) {
-      console.error('Error creating session:', error);
-      throw new Error('Failed to create session');
-    }
-  }
+    return () => {
+      isMountedRef.current = false;
+      audioPlayerRef.current?.stopCurrentAudio();
+      audioRecorderRef.current?.stopRecording();
+    };
+  }, []);
 
   async function handleAudioData(audioBlob: Blob) {
-    if (!sessionId || !sessionSecret || isProcessing) {
+    if (!sessionId || !sessionSecret || processingRef.current || !isMountedRef.current) {
       console.log('🎤 Skipping audio processing - session not ready or already processing');
       return;
     }
 
     try {
-      setIsProcessing(true);
+      processingRef.current = true;
+      if (isMountedRef.current) setIsProcessing(true);
+      
       console.log('🎤 Processing audio with ASR model:', asrModel);
       
       // Convert to base64
@@ -80,30 +85,56 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
       console.log('🎤 ASR result:', { text: userMessage, duration: data.duration_ms, model: data.model });
       
       // Add user message to transcript
-      setTranscript(prev => [...prev, {
-        speaker: 'visitor',
-        text: userMessage,
-        timestamp: new Date()
-      }]);
+      if (isMountedRef.current) {
+        setTranscript(prev => [...prev, {
+          speaker: 'visitor',
+          text: userMessage,
+          timestamp: new Date()
+        }]);
+      }
 
       // Send to agent for processing
       await sendToAgent(userMessage);
     } catch (error) {
       console.error('Error processing audio:', error);
     } finally {
-      setIsProcessing(false);
+      processingRef.current = false;
+      if (isMountedRef.current) setIsProcessing(false);
+    }
+  }
+
+  async function createSession(consent: boolean = false): Promise<string> {
+    try {
+      const { data, error } = await supabase.functions.invoke('create_session', {
+        body: {
+          visitor_id: crypto.randomUUID(),
+          consent
+        }
+      });
+
+      if (error) throw error;
+
+      const response = data as CreateSessionResponse;
+      if (isMountedRef.current) {
+        setSessionId(response.session_id);
+        setSessionSecret(response.session_secret);
+      }
+      return response.session_id;
+    } catch (error) {
+      console.error('Error creating session:', error);
+      throw new Error('Failed to create session');
     }
   }
 
   async function sendToAgent(userMessage: string) {
-    if (!sessionId || !sessionSecret || isTyping) {
-      console.log('🤖 Skipping agent request - session not ready or already processing');
+    if (!sessionId || !sessionSecret || !isMountedRef.current) {
+      console.log('🤖 Skipping agent request - session not ready or component unmounted');
       return;
     }
 
     try {
       // Show typing indicator immediately
-      setIsTyping(true);
+      if (isMountedRef.current) setIsTyping(true);
       
       const response = await supabase.functions.invoke('agent_reply', {
         body: {
@@ -142,37 +173,39 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
       displayText = displayText.replace(/\s+/g, ' ').trim();
       
       // Add agent response to transcript with cleaned text
-      setTranscript(prev => [...prev, {
-        speaker: 'agent',
-        text: displayText,
-        timestamp: new Date()
-      }]);
-      
-      // Add debug commands to debug state
-      if (debugCommands.length > 0) {
-        setDebugCommands(prev => [
-          ...prev,
-          ...debugCommands.map((cmd: string) => ({
-            command: cmd,
-            timestamp: new Date()
-          }))
-        ]);
-      }
+      if (isMountedRef.current) {
+        setTranscript(prev => [...prev, {
+          speaker: 'agent',
+          text: displayText,
+          timestamp: new Date()
+        }]);
+        
+        // Add debug commands to debug state
+        if (debugCommands.length > 0) {
+          setDebugCommands(prev => [
+            ...prev,
+            ...debugCommands.map((cmd: string) => ({
+              command: cmd,
+              timestamp: new Date()
+            }))
+          ]);
+        }
 
-      // Update intent and lead score if available
-      if (agentResponse.extract) {
-        setCurrentIntent(agentResponse.extract.intent);
-        setLeadScore(agentResponse.extract.lead_score || 0);
-        setLatestExtract(agentResponse.extract);
+        // Update intent and lead score if available
+        if (agentResponse.extract) {
+          setCurrentIntent(agentResponse.extract.intent);
+          setLeadScore(agentResponse.extract.lead_score || 0);
+          setLatestExtract(agentResponse.extract);
+        }
       }
 
       // Play TTS audio if available and audio is enabled
-      if (agentResponse.audio_base64 && audioEnabled) {
+      if (agentResponse.audio_base64 && audioEnabled && audioPlayerRef.current) {
         console.log('🎵 useVoiceChat: Playing TTS audio, length:', agentResponse.audio_base64.length);
-        await audioPlayer.playAudio(agentResponse.audio_base64);
+        await audioPlayerRef.current.playAudio(agentResponse.audio_base64);
         
         // Handle debug commands from TTS response
-        if (agentResponse.debug_commands && agentResponse.debug_commands.length > 0) {
+        if (agentResponse.debug_commands && agentResponse.debug_commands.length > 0 && isMountedRef.current) {
           setDebugCommands(prev => [
             ...prev,
             ...agentResponse.debug_commands.map((cmd: string) => ({
@@ -192,13 +225,15 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
     } catch (error) {
       console.error('Error sending to agent:', error);
     } finally {
-      setIsTyping(false);
+      if (isMountedRef.current) setIsTyping(false);
     }
   }
 
   async function startRecording() {
     try {
-      await audioRecorder.startRecording();
+      if (audioRecorderRef.current) {
+        await audioRecorderRef.current.startRecording();
+      }
     } catch (error) {
       console.error('Error starting recording:', error);
       throw error;
@@ -206,22 +241,28 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
   }
 
   function stopRecording() {
-    audioRecorder.stopRecording();
+    if (audioRecorderRef.current) {
+      audioRecorderRef.current.stopRecording();
+    }
   }
 
   function stopSpeaking() {
-    audioPlayer.stopCurrentAudio();
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.stopCurrentAudio();
+    }
   }
 
   async function sendTextMessage(message: string) {
-    if (!sessionId || !sessionSecret) return;
+    if (!sessionId || !sessionSecret || !isMountedRef.current) return;
     
     // Add to transcript
-    setTranscript(prev => [...prev, {
-      speaker: 'visitor',
-      text: message,
-      timestamp: new Date()
-    }]);
+    if (isMountedRef.current) {
+      setTranscript(prev => [...prev, {
+        speaker: 'visitor',
+        text: message,
+        timestamp: new Date()
+      }]);
+    }
 
     // Send to agent
     await sendToAgent(message);
