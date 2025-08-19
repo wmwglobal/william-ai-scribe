@@ -47,7 +47,7 @@ export default function Chat() {
     stopRecording,
     stopSpeaking,
     sendTextMessage
-  } = useVoiceChat(audioEnabled, selectedModel.id, selectedPersonality);
+  } = useVoiceChat(audioEnabled, 'distil-whisper-large-v3-en', selectedPersonality);
 
   // State for UI
   const [sessionStarted, setSessionStarted] = useState(false);
