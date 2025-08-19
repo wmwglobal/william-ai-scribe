@@ -80,8 +80,8 @@ export const useRealtimeChat = (audioEnabled: boolean = true) => {
 
     console.log('🔌 Connecting to realtime chat...');
     
-    // Use the full Supabase function URL
-    const wsUrl = 'wss://ppjgljnilwlbdlsdthov.functions.supabase.co/realtime_chat';
+    // Use the correct Supabase function URL
+    const wsUrl = 'wss://suyervjawrmbyyxetblv.functions.supabase.co/realtime_chat';
     wsRef.current = new WebSocket(wsUrl);
 
     wsRef.current.onopen = () => {
