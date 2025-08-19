@@ -110,11 +110,12 @@ export class AudioRecorder {
   private source: MediaStreamAudioSourceNode | null = null;
   private vadCheckInterval: number | null = null;
   private lastSpeechTime = 0;
-  private silenceThreshold = 1500; // Increased to 1.5 seconds for better speech segmentation
-  private volumeThreshold = 0.01; // Raised threshold to be less sensitive to background noise
+  private silenceThreshold = 800; // Reduced to 0.8 seconds for faster response
+  private volumeThreshold = 0.008; // Slightly raised to reduce false triggers
   private isCurrentlySpeaking = false;
-  private maxRecordingDuration = 10000; // Maximum 10 seconds per recording segment
+  private maxRecordingDuration = 8000; // Reduced to 8 seconds per segment
   private recordingStartTime = 0;
+  private speechStartTime = 0; // Track when continuous speech started
 
   constructor(
     private onDataAvailable?: (audioBlob: Blob) => void,
@@ -171,6 +172,7 @@ export class AudioRecorder {
 
       const now = Date.now();
       const isSpeaking = normalizedVolume > this.volumeThreshold;
+      const wasSpeaking = this.isCurrentlySpeaking;
 
       // Log voice activity for debugging (only when there's meaningful audio)
       if (normalizedVolume > 0.005) {
@@ -178,32 +180,54 @@ export class AudioRecorder {
           volume: normalizedVolume.toFixed(4),
           threshold: this.volumeThreshold,
           isSpeaking,
+          wasSpeaking,
           isRecording: this.isRecording,
           isContinuous: this.isContinuousMode,
-          timeSinceLastSpeech: now - this.lastSpeechTime
+          timeSinceLastSpeech: now - this.lastSpeechTime,
+          silenceThreshold: this.silenceThreshold
         });
       }
 
       if (isSpeaking) {
         this.lastSpeechTime = now;
         
+        // Track when continuous speech started
+        if (!this.isCurrentlySpeaking) {
+          this.speechStartTime = now;
+          this.isCurrentlySpeaking = true;
+          console.log('🎤 📢 SPEECH STARTED');
+        }
+        
         // Start recording if not already recording
         if (!this.isRecording && this.isContinuousMode) {
           console.log('🎤 ✅ TRIGGERING RECORDING due to speech detection - volume:', normalizedVolume.toFixed(4));
           this.startRecordingSegment();
           this.onSpeechActivity?.(true);
-          this.isCurrentlySpeaking = true;
         }
-      } else if (this.isRecording) {
-        const silenceDuration = now - this.lastSpeechTime;
-        const recordingDuration = now - this.recordingStartTime;
-        
-        // Stop recording if silence threshold reached OR max recording duration exceeded
-        if (silenceDuration > this.silenceThreshold || recordingDuration > this.maxRecordingDuration) {
-          console.log('🎤 Stopping recording due to:', silenceDuration > this.silenceThreshold ? 'silence' : 'max duration');
-          this.stopRecordingSegment();
-          this.onSpeechActivity?.(false);
-          this.isCurrentlySpeaking = false;
+      } else {
+        // Not currently speaking
+        if (this.isCurrentlySpeaking) {
+          const silenceDuration = now - this.lastSpeechTime;
+          console.log('🎤 🤫 Silence detected for', silenceDuration, 'ms (threshold:', this.silenceThreshold, 'ms)');
+          
+          if (silenceDuration > this.silenceThreshold) {
+            console.log('🎤 📢 SPEECH ENDED - silence threshold reached');
+            this.isCurrentlySpeaking = false;
+            
+            if (this.isRecording) {
+              console.log('🎤 🛑 Stopping recording due to speech end');
+              this.stopRecordingSegment();
+              this.onSpeechActivity?.(false);
+            }
+          }
+        } else if (this.isRecording) {
+          // Check for max recording duration even if no speech was detected
+          const recordingDuration = now - this.recordingStartTime;
+          if (recordingDuration > this.maxRecordingDuration) {
+            console.log('🎤 🛑 Stopping recording due to max duration:', recordingDuration, 'ms');
+            this.stopRecordingSegment();
+            this.onSpeechActivity?.(false);
+          }
         }
       }
     };
