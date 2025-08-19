@@ -462,6 +462,10 @@ export type Database = {
         Args: { "": string } | { "": unknown }
         Returns: unknown
       }
+      can_access_utterances: {
+        Args: { utterance_session_id: string }
+        Returns: boolean
+      }
       current_session_has_access: {
         Args: { session_id_param: string }
         Returns: boolean
