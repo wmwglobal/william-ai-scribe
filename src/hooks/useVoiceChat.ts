@@ -52,24 +52,41 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
   }, [sessionId, sessionSecret]); // Add dependencies so it recreates when session changes
 
   async function handleAudioData(audioBlob: Blob) {
-    console.log('🎤 handleAudioData called:', {
-      sessionId: !!sessionId,
-      sessionSecret: !!sessionSecret,
-      processing: processingRef.current,
-      mounted: isMountedRef.current,
-      blobSize: audioBlob.size
-    });
+    console.log('🎤 ===== handleAudioData START =====');
+    console.log('🎤 Blob size:', audioBlob.size, 'bytes');
+    console.log('🎤 Session ID:', sessionId);
+    console.log('🎤 Session Secret:', sessionSecret ? 'Present' : 'Missing');
+    console.log('🎤 Processing ref:', processingRef.current);
+    console.log('🎤 Mounted ref:', isMountedRef.current);
     
-    if (!sessionId || !sessionSecret || processingRef.current || !isMountedRef.current) {
-      console.log('🎤 Skipping audio processing - session not ready or already processing');
+    if (!sessionId) {
+      console.error('🎤 BLOCKED: No session ID');
       return;
     }
+    
+    if (!sessionSecret) {
+      console.error('🎤 BLOCKED: No session secret');
+      return;
+    }
+    
+    if (processingRef.current) {
+      console.error('🎤 BLOCKED: Already processing');
+      return;
+    }
+    
+    if (!isMountedRef.current) {
+      console.error('🎤 BLOCKED: Component unmounted');
+      return;
+    }
+
+    console.log('🎤 All checks passed, starting processing...');
 
     try {
       processingRef.current = true;
       if (isMountedRef.current) setIsProcessing(true);
       
       console.log('🎤 Processing audio with ASR model:', asrModel);
+      console.log('🎤 Converting to base64...');
       
       // Convert to base64
       const audioBase64 = await audioToBase64(audioBlob);
