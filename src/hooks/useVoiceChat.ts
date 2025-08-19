@@ -115,7 +115,9 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
     }
     
     if (processingRef.current) {
-      console.error('🎤 BLOCKED: Already processing');
+      console.log('🎤 ⚠️ Already processing - queuing this request');
+      // Don't block completely, just wait a bit and try again
+      setTimeout(() => handleAudioData(audioBlob), 100);
       return;
     }
     

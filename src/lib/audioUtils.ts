@@ -111,7 +111,7 @@ export class AudioRecorder {
   private vadCheckInterval: number | null = null;
   private transcriptionCheckInterval: number | null = null;
   private lastWordTime = 0;
-  private wordSilenceThreshold = 800; // 0.8 seconds of no new words
+  private wordSilenceThreshold = 1500; // 1.5 seconds of no new words
   private volumeThreshold = 0.01; // Basic threshold for initial speech detection
   private isCurrentlySpeaking = false;
   private maxRecordingDuration = 30000; // 30 seconds max per segment
@@ -242,8 +242,9 @@ export class AudioRecorder {
             hasNewWords: transcript !== this.lastTranscript && transcript.length > this.lastTranscript.length
           });
           
-          // Check if we have new words
-          if (transcript && transcript !== this.lastTranscript && transcript.length > this.lastTranscript.length) {
+          // Check if we have meaningful new words (more substantial than just single letters)
+          if (transcript && transcript.length > 2 && 
+              (transcript !== this.lastTranscript && transcript.length > this.lastTranscript.length)) {
             this.lastWordTime = Date.now();
             this.lastTranscript = transcript;
             console.log('🎤 📝 NEW WORDS detected:', transcript);
