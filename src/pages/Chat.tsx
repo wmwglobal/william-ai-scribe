@@ -165,8 +165,15 @@ export default function Chat() {
       <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
         <Card className="w-full max-w-md bg-background/80 backdrop-blur-sm">
           <CardContent className="p-6 space-y-6">
-            <div className="text-center space-y-2">
-              <Brain className="w-12 h-12 mx-auto text-primary" />
+            <div className="text-center space-y-4">
+              <div className="relative mx-auto w-24 h-24">
+                <img 
+                  src="/lovable-uploads/4e4a0df0-6324-48a2-8c35-0b8ae7db33bc.png" 
+                  alt="AI William" 
+                  className="w-24 h-24 rounded-full object-cover border-4 border-primary/20 shadow-xl"
+                />
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-background animate-pulse" />
+              </div>
               <h1 className="text-2xl font-bold">Chat with AI William</h1>
               <p className="text-muted-foreground">
                 Start a conversation with AI William to explore ideas, get advice, or discuss your projects.
