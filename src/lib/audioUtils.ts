@@ -136,6 +136,7 @@ export class AudioRecorder {
 
       this.mediaRecorder.onstop = () => {
         const audioBlob = new Blob(this.chunks, { type: 'audio/webm;codecs=opus' });
+        console.log('🎤 Audio blob created:', audioBlob.size, 'bytes');
         this.onDataAvailable?.(audioBlob);
         this.chunks = [];
       };
