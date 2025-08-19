@@ -237,6 +237,9 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
         }
       }
 
+      // Stop showing "thinking" indicator before playing audio
+      if (isMountedRef.current) setIsTyping(false);
+
       // Play TTS audio if available and audio is enabled
       if (agentResponse.audio_base64 && audioEnabled && audioPlayerRef.current) {
         console.log('🎵 useVoiceChat: Playing TTS audio, length:', agentResponse.audio_base64.length);
@@ -262,7 +265,7 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
 
     } catch (error) {
       console.error('Error sending to agent:', error);
-    } finally {
+      // Ensure typing indicator is turned off on error
       if (isMountedRef.current) setIsTyping(false);
     }
   }
