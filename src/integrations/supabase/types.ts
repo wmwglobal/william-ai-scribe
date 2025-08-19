@@ -118,6 +118,62 @@ export type Database = {
           },
         ]
       }
+      memories: {
+        Row: {
+          content: Json
+          created_at: string | null
+          embedding: string | null
+          id: string
+          importance: number | null
+          last_referenced: string | null
+          scope: string
+          session_id: string | null
+          summary: string | null
+          tags: string[] | null
+          updated_at: string | null
+          user_id: string | null
+          visitor_id: string | null
+        }
+        Insert: {
+          content: Json
+          created_at?: string | null
+          embedding?: string | null
+          id?: string
+          importance?: number | null
+          last_referenced?: string | null
+          scope: string
+          session_id?: string | null
+          summary?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+          visitor_id?: string | null
+        }
+        Update: {
+          content?: Json
+          created_at?: string | null
+          embedding?: string | null
+          id?: string
+          importance?: number | null
+          last_referenced?: string | null
+          scope?: string
+          session_id?: string | null
+          summary?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+          visitor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memories_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null

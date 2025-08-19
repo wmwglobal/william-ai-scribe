@@ -279,7 +279,7 @@ serve(async (req) => {
     // Verify session authorization and get current mode
     const { data: session, error: sessionError } = await supabase
       .from('sessions')
-      .select('id, current_mode')
+      .select('id, current_mode, visitor_id, created_by')
       .eq('id', session_id)
       .eq('session_secret', session_secret)
       .single();
@@ -331,6 +331,37 @@ serve(async (req) => {
       .order('ts', { ascending: true })
       .limit(20);
 
+    // Recall relevant memories for context
+    let memoryContext = '';
+    try {
+      const { data: memoryResponse } = await supabase.functions.invoke('recall_memories', {
+        body: {
+          query: user_message,
+          session_id: session_id,
+          visitor_id: session.visitor_id,
+          user_id: session.created_by,
+          scopes: ['medium', 'long', 'episodic'],
+          limit: 3
+        }
+      });
+
+      if (memoryResponse?.memories?.length > 0) {
+        const relevantMemories = memoryResponse.memories
+          .filter((m: any) => m.similarity > 0.5 || m.importance >= 7)
+          .slice(0, 2); // Limit to prevent token bloat
+
+        if (relevantMemories.length > 0) {
+          memoryContext = '\n\nRELEVANT CONTEXT FROM PREVIOUS CONVERSATIONS:\n' +
+            relevantMemories.map((m: any) => 
+              `- ${m.summary || JSON.stringify(m.content).substring(0, 200)}${m.tags?.length ? ` [${m.tags.join(', ')}]` : ''}`
+            ).join('\n') + '\n';
+        }
+      }
+    } catch (memoryError) {
+      console.error('Memory recall failed:', memoryError);
+      // Continue without memory context - not critical
+    }
+
     // Format messages for AI
     const messages = (utterances || []).map(u => ({
       role: u.speaker === 'agent' ? 'assistant' : 'user',
@@ -343,6 +374,11 @@ serve(async (req) => {
     // Build personality-aware system prompt
     const personalityPrompt = PERSONALITY_PROMPTS[currentMode] || PERSONALITY_PROMPTS.entrepreneur;
     let contextualPrompt = personalityPrompt;
+    
+    // Add memory context if available
+    if (memoryContext) {
+      contextualPrompt += memoryContext;
+    }
     
     if (isFirstMessage) {
       contextualPrompt += `
@@ -428,6 +464,18 @@ IMPORTANT: This is the first message. Be casual and conversational like you're m
       } catch (extractError) {
         console.error('Error saving extract:', extractError);
       }
+    }
+
+    // Trigger periodic summarization (every 10 utterances)
+    const totalUtterances = (utterances?.length || 0) + 2; // +2 for user + agent just added
+    if (totalUtterances % 10 === 0 && totalUtterances >= 10) {
+      console.log(`Triggering summarization at ${totalUtterances} utterances`);
+      // Fire and forget - don't wait for completion
+      supabase.functions.invoke('summarize_session', {
+        body: { session_id: session_id }
+      }).catch(error => {
+        console.error('Background summarization failed:', error);
+      });
     }
 
     // Generate TTS audio using supabase client instead of manual fetch
