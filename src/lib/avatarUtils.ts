@@ -1,7 +1,7 @@
 // Utility for randomly selecting AI William avatar images
 
 const WILLIAM_AVATARS = [
-  '/lovable-uploads/bdd44193-c823-4a85-9b62-ad2e563e7335.png', // Primary AI William avatar
+  '/lovable-uploads/4e4a0df0-6324-48a2-8c35-0b8ae7db33bc.png', // Anime-style AI William avatar
 ];
 
 /**

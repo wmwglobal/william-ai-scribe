@@ -215,11 +215,14 @@ export default function Chat() {
       <div className="bg-background/90 backdrop-blur-sm border-b p-3">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img 
-              src={getSessionAvatar(sessionId || '')} 
-              alt="AI William" 
-              className="w-8 h-8 rounded-full object-cover"
-            />
+            <div className="relative">
+              <img 
+                src={getSessionAvatar(sessionId || '')} 
+                alt="AI William" 
+                className="w-12 h-12 rounded-full object-cover border-2 border-primary/20 shadow-lg"
+              />
+              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-background animate-pulse" />
+            </div>
             <div>
               <h1 className="font-semibold text-sm">AI William</h1>
               <div className="flex items-center gap-2">
@@ -274,11 +277,14 @@ export default function Chat() {
                 <div key={index} className={`flex gap-3 ${entry.speaker === 'agent' ? 'justify-start' : 'justify-end'}`}>
                   <div className={`flex gap-3 max-w-[80%] ${entry.speaker === 'agent' ? 'flex-row' : 'flex-row-reverse'}`}>
                     {entry.speaker === 'agent' ? (
-                      <img 
-                        src={getSessionAvatar(sessionId || '')} 
-                        alt="AI William" 
-                        className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-                      />
+                      <div className="relative">
+                        <img 
+                          src={getSessionAvatar(sessionId || '')} 
+                          alt="AI William" 
+                          className="w-10 h-10 rounded-full object-cover flex-shrink-0 border-2 border-primary/10 shadow-md"
+                        />
+                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full border border-background" />
+                      </div>
                     ) : (
                       <div className="w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center flex-shrink-0">
                         <User className="w-4 h-4" />
@@ -302,11 +308,14 @@ export default function Chat() {
               {isTyping && (
                 <div className="flex gap-3 justify-start">
                   <div className="flex gap-3 max-w-[80%]">
-                    <img 
-                      src={getSessionAvatar(sessionId || '')} 
-                      alt="AI William" 
-                      className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-                    />
+                    <div className="relative">
+                      <img 
+                        src={getSessionAvatar(sessionId || '')} 
+                        alt="AI William" 
+                        className="w-10 h-10 rounded-full object-cover flex-shrink-0 border-2 border-primary/10 shadow-md"
+                      />
+                      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-blue-500 rounded-full border border-background animate-pulse" />
+                    </div>
                     <div className="bg-muted text-foreground rounded-lg px-4 py-2">
                       <div className="flex items-center gap-1">
                         <div className="flex space-x-1">
