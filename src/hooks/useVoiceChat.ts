@@ -36,13 +36,21 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
     // Create the audio recorder with the callback function
     const recorder = new AudioRecorder(
       (audioBlob: Blob) => {
+        console.log('🎤 ===== AUDIO CALLBACK TRIGGERED =====');
         console.log('🎤 AudioRecorder callback triggered with blob size:', audioBlob.size);
+        console.log('🎤 Blob type:', audioBlob.type);
+        console.log('🎤 Session state:', { sessionId, sessionSecret: !!sessionSecret });
+        console.log('🎤 Component mounted:', isMountedRef.current);
+        console.log('🎤 Processing state:', processingRef.current);
+        console.log('🎤 About to call handleAudioData...');
         handleAudioData(audioBlob);
       },
       (recording) => {
+        console.log('🎤 Recording state changed:', recording);
         if (isMountedRef.current) setIsRecording(recording);
       },
       (speechActive) => {
+        console.log('🎤 Speech activity changed:', speechActive);
         if (isMountedRef.current) setIsSpeechActive(speechActive);
       }
     );
@@ -94,7 +102,10 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
       
       // Convert to base64
       const audioBase64 = await audioToBase64(audioBlob);
-      console.log('🎤 Base64 conversion complete, length:', audioBase64.length);
+      console.log('🎤 ✅ Base64 conversion complete, length:', audioBase64.length);
+      console.log('🎤 Base64 preview:', audioBase64.substring(0, 100) + '...');
+      
+      console.log('🎤 🚀 About to call speech_to_text_groq edge function...');
       
       console.log('🎤 Calling speech_to_text_groq edge function...');
       // Call speech-to-text API
@@ -107,20 +118,25 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
         }
       });
 
-      console.log('🎤 Edge function response:', { data, error });
+      console.log('🎤 ⬅️ Edge function response received');
+      console.log('🎤 Response data:', data);
+      console.log('🎤 Response error:', error);
 
       if (error) {
-        console.error('ASR error:', error);
-        throw new Error('Speech recognition failed');
+        console.error('🎤 ❌ ASR error:', error);
+        throw new Error('Speech recognition failed: ' + (error.message || 'Unknown error'));
       }
 
       const userMessage = data.text?.trim();
+      console.log('🎤 📝 Extracted text from ASR:', userMessage);
+      console.log('🎤 Text length:', userMessage?.length || 0);
+      
       if (!userMessage) {
-        console.log('No speech detected in audio');
+        console.log('🎤 ⚠️ No speech detected in audio - stopping processing');
         return;
       }
 
-      console.log('🎤 ASR result:', { text: userMessage, duration: data.duration_ms, model: data.model });
+      console.log('🎤 ✅ ASR SUCCESS:', { text: userMessage, duration: data.duration_ms, model: data.model });
       
       // Add user message to transcript
       if (isMountedRef.current) {
@@ -132,12 +148,16 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
       }
 
       // Send to agent for processing
+      console.log('🎤 🤖 About to send to agent:', userMessage);
       await sendToAgent(userMessage);
+      console.log('🎤 ✅ Agent processing complete');
     } catch (error) {
-      console.error('Error processing audio:', error);
+      console.error('🎤 ❌ Error processing audio:', error);
+      console.error('🎤 Error stack:', error.stack);
     } finally {
       processingRef.current = false;
       if (isMountedRef.current) setIsProcessing(false);
+      console.log('🎤 ===== handleAudioData END =====');
     }
   }
 
