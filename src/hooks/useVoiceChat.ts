@@ -32,21 +32,34 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
       if (isMountedRef.current) setIsSpeaking(playing);
     });
     
-    audioRecorderRef.current = new AudioRecorder(
-      handleAudioData,
+    // Create the audio recorder with the callback function
+    const recorder = new AudioRecorder(
+      (audioBlob: Blob) => {
+        console.log('🎤 AudioRecorder callback triggered with blob size:', audioBlob.size);
+        handleAudioData(audioBlob);
+      },
       (recording) => {
         if (isMountedRef.current) setIsRecording(recording);
       }
     );
+    audioRecorderRef.current = recorder;
 
     return () => {
       isMountedRef.current = false;
       audioPlayerRef.current?.stopCurrentAudio();
       audioRecorderRef.current?.stopRecording();
     };
-  }, []);
+  }, [sessionId, sessionSecret]); // Add dependencies so it recreates when session changes
 
   async function handleAudioData(audioBlob: Blob) {
+    console.log('🎤 handleAudioData called:', {
+      sessionId: !!sessionId,
+      sessionSecret: !!sessionSecret,
+      processing: processingRef.current,
+      mounted: isMountedRef.current,
+      blobSize: audioBlob.size
+    });
+    
     if (!sessionId || !sessionSecret || processingRef.current || !isMountedRef.current) {
       console.log('🎤 Skipping audio processing - session not ready or already processing');
       return;
