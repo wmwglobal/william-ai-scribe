@@ -9,6 +9,7 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false); // Prevent concurrent processing
   const [currentIntent, setCurrentIntent] = useState<string | null>(null);
   const [leadScore, setLeadScore] = useState(0);
   const [latestExtract, setLatestExtract] = useState<any>(null);
@@ -43,9 +44,13 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
   }
 
   async function handleAudioData(audioBlob: Blob) {
-    if (!sessionId || !sessionSecret) return;
+    if (!sessionId || !sessionSecret || isProcessing) {
+      console.log('🎤 Skipping audio processing - session not ready or already processing');
+      return;
+    }
 
     try {
+      setIsProcessing(true);
       console.log('🎤 Processing audio with ASR model:', asrModel);
       
       // Convert to base64
@@ -85,34 +90,29 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
       await sendToAgent(userMessage);
     } catch (error) {
       console.error('Error processing audio:', error);
+    } finally {
+      setIsProcessing(false);
     }
   }
 
   async function sendToAgent(userMessage: string) {
-    if (!sessionId || !sessionSecret) return;
+    if (!sessionId || !sessionSecret || isTyping) {
+      console.log('🤖 Skipping agent request - session not ready or already processing');
+      return;
+    }
 
     try {
-      // Add a natural delay before showing typing indicator (1-4 seconds)
-      const initialDelay = Math.random() * 3000 + 1000;
-      await new Promise(resolve => setTimeout(resolve, initialDelay));
-      
-      // Show typing indicator
+      // Show typing indicator immediately
       setIsTyping(true);
       
-      // Keep typing indicator visible for a minimum time (2-4 seconds)
-      const typingDuration = Math.random() * 2000 + 2000;
-      // Start the API call and typing timer in parallel
-      const [response] = await Promise.all([
-        supabase.functions.invoke('agent_reply', {
-          body: {
-            session_id: sessionId,
-            user_message: userMessage,
-            session_secret: sessionSecret,
-            mode: personality?.id
-          }
-        }),
-        new Promise(resolve => setTimeout(resolve, typingDuration))
-      ]);
+      const response = await supabase.functions.invoke('agent_reply', {
+        body: {
+          session_id: sessionId,
+          user_message: userMessage,
+          session_secret: sessionSecret,
+          mode: personality?.id
+        }
+      });
 
       if (response.error) throw response.error;
 
@@ -232,6 +232,7 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
     isRecording,
     isSpeaking,
     isTyping,
+    isProcessing,
     currentIntent,
     leadScore,
     latestExtract,

@@ -36,6 +36,7 @@ export default function Chat() {
     isRecording,
     isSpeaking,
     isTyping,
+    isProcessing,
     currentIntent,
     leadScore,
     latestExtract,
@@ -350,7 +351,7 @@ export default function Chat() {
               variant={isRecording ? "destructive" : "outline"}
               size="sm"
               onClick={handleRecordingToggle}
-              disabled={!audioEnabled}
+              disabled={!audioEnabled || isProcessing || isTyping}
               className="flex-shrink-0"
             >
               {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
@@ -375,16 +376,16 @@ export default function Chat() {
                 onChange={(e) => setTextInput(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Type a message..."
-                disabled={isTyping}
+                disabled={isTyping || isProcessing}
                 className="flex-1"
               />
               <Button 
                 type="submit" 
                 size="sm"
-                disabled={!textInput.trim() || isTyping}
+                disabled={!textInput.trim() || isTyping || isProcessing}
                 className="flex-shrink-0"
               >
-                {isTyping ? (
+                {isTyping || isProcessing ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <Send className="w-4 h-4" />
@@ -396,6 +397,12 @@ export default function Chat() {
           {/* Status indicators */}
           <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
             <div className="flex items-center gap-4">
+              {isProcessing && (
+                <span className="flex items-center gap-1 text-blue-500">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                  Processing audio...
+                </span>
+              )}
               {isRecording && (
                 <span className="flex items-center gap-1 text-red-500">
                   <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
