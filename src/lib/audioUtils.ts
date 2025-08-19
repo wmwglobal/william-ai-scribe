@@ -205,23 +205,24 @@ export class AudioRecorder {
           this.onSpeechActivity?.(true);
         }
       } else {
-        // Not currently speaking
+        // Not currently speaking - check for silence
         if (this.isCurrentlySpeaking) {
           const silenceDuration = now - this.lastSpeechTime;
-          console.log('🎤 🤫 Silence detected for', silenceDuration, 'ms (threshold:', this.silenceThreshold, 'ms)');
           
           if (silenceDuration > this.silenceThreshold) {
-            console.log('🎤 📢 SPEECH ENDED - silence threshold reached');
+            console.log('🎤 📢 SPEECH ENDED - silence for', silenceDuration, 'ms (threshold:', this.silenceThreshold, 'ms)');
             this.isCurrentlySpeaking = false;
             
             if (this.isRecording) {
-              console.log('🎤 🛑 Stopping recording due to speech end');
+              console.log('🎤 🛑 AUTO-STOPPING recording due to speech end');
               this.stopRecordingSegment();
               this.onSpeechActivity?.(false);
             }
           }
-        } else if (this.isRecording) {
-          // Check for max recording duration even if no speech was detected
+        }
+        
+        // Fallback: max recording duration check
+        if (this.isRecording) {
           const recordingDuration = now - this.recordingStartTime;
           if (recordingDuration > this.maxRecordingDuration) {
             console.log('🎤 🛑 Stopping recording due to max duration:', recordingDuration, 'ms');
