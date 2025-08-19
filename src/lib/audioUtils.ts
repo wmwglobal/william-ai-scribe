@@ -110,9 +110,11 @@ export class AudioRecorder {
   private source: MediaStreamAudioSourceNode | null = null;
   private vadCheckInterval: number | null = null;
   private lastSpeechTime = 0;
-  private silenceThreshold = 800; // Reduced to 800ms for more responsive detection
-  private volumeThreshold = 0.002; // Further lowered threshold for more sensitivity
+  private silenceThreshold = 1500; // Increased to 1.5 seconds for better speech segmentation
+  private volumeThreshold = 0.01; // Raised threshold to be less sensitive to background noise
   private isCurrentlySpeaking = false;
+  private maxRecordingDuration = 10000; // Maximum 10 seconds per recording segment
+  private recordingStartTime = 0;
 
   constructor(
     private onDataAvailable?: (audioBlob: Blob) => void,
@@ -170,14 +172,17 @@ export class AudioRecorder {
       const now = Date.now();
       const isSpeaking = normalizedVolume > this.volumeThreshold;
 
-      // Log voice activity for debugging (always log to help with debugging)
-      console.log('🎤 Voice Activity:', {
-        volume: normalizedVolume.toFixed(4),
-        threshold: this.volumeThreshold,
-        isSpeaking,
-        isRecording: this.isRecording,
-        isContinuous: this.isContinuousMode
-      });
+      // Log voice activity for debugging (only when there's meaningful audio)
+      if (normalizedVolume > 0.005) {
+        console.log('🎤 Voice Activity:', {
+          volume: normalizedVolume.toFixed(4),
+          threshold: this.volumeThreshold,
+          isSpeaking,
+          isRecording: this.isRecording,
+          isContinuous: this.isContinuousMode,
+          timeSinceLastSpeech: now - this.lastSpeechTime
+        });
+      }
 
       if (isSpeaking) {
         this.lastSpeechTime = now;
@@ -189,12 +194,17 @@ export class AudioRecorder {
           this.onSpeechActivity?.(true);
           this.isCurrentlySpeaking = true;
         }
-      } else if (this.isRecording && (now - this.lastSpeechTime) > this.silenceThreshold) {
-        // Stop recording after silence threshold
-        console.log('🎤 Stopping recording due to silence');
-        this.stopRecordingSegment();
-        this.onSpeechActivity?.(false);
-        this.isCurrentlySpeaking = false;
+      } else if (this.isRecording) {
+        const silenceDuration = now - this.lastSpeechTime;
+        const recordingDuration = now - this.recordingStartTime;
+        
+        // Stop recording if silence threshold reached OR max recording duration exceeded
+        if (silenceDuration > this.silenceThreshold || recordingDuration > this.maxRecordingDuration) {
+          console.log('🎤 Stopping recording due to:', silenceDuration > this.silenceThreshold ? 'silence' : 'max duration');
+          this.stopRecordingSegment();
+          this.onSpeechActivity?.(false);
+          this.isCurrentlySpeaking = false;
+        }
       }
     };
 
@@ -228,6 +238,7 @@ export class AudioRecorder {
 
       this.mediaRecorder.start();
       this.isRecording = true;
+      this.recordingStartTime = Date.now(); // Track when recording started
       console.log('Started recording speech segment');
     } catch (error) {
       console.error('Error starting recording segment:', error);
