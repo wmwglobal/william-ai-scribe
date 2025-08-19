@@ -110,18 +110,14 @@ export class AudioRecorder {
   private source: MediaStreamAudioSourceNode | null = null;
   private vadCheckInterval: number | null = null;
   private lastSpeechTime = 0;
-  private silenceThreshold = 800; // 0.8 seconds for natural speech pauses
-  private baseVolumeThreshold = 0.01; // Base threshold for speech detection
-  private adaptiveThreshold = 0.01; // Adaptive threshold that adjusts to background noise
-  private backgroundNoise = 0; // Running average of background noise
+  private silenceThreshold = 1000; // 1 second for natural speech pauses
+  private volumeThreshold = 0.01; // Simple volume threshold that works
   private isCurrentlySpeaking = false;
-  private maxRecordingDuration = 8000; // 8 seconds per segment
+  private maxRecordingDuration = 10000; // 10 seconds per segment
   private recordingStartTime = 0;
   private speechStartTime = 0;
-  private volumeHistory: number[] = []; // Sliding window for volume smoothing
-  private readonly volumeHistorySize = 10; // Number of samples to keep
-  private readonly noiseAdaptationRate = 0.1; // How quickly to adapt to background noise
-  private speechConfidenceThreshold = 0.6; // Confidence required to consider it speech
+  private volumeHistory: number[] = []; // For smoothing
+  private readonly volumeHistorySize = 5; // Smaller window for responsiveness
 
   constructor(
     private onDataAvailable?: (audioBlob: Blob) => void,
@@ -161,21 +157,6 @@ export class AudioRecorder {
     }
   }
 
-  private updateBackgroundNoise(volume: number): void {
-    // Adaptive background noise estimation
-    if (this.backgroundNoise === 0) {
-      this.backgroundNoise = volume;
-    } else {
-      this.backgroundNoise = this.backgroundNoise * (1 - this.noiseAdaptationRate) + volume * this.noiseAdaptationRate;
-    }
-    
-    // Update adaptive threshold based on background noise
-    this.adaptiveThreshold = Math.max(
-      this.baseVolumeThreshold,
-      this.backgroundNoise * 2.5 // Threshold should be 2.5x background noise
-    );
-  }
-
   private smoothVolume(currentVolume: number): number {
     // Add to volume history
     this.volumeHistory.push(currentVolume);
@@ -185,14 +166,6 @@ export class AudioRecorder {
     
     // Return smoothed average
     return this.volumeHistory.reduce((sum, vol) => sum + vol, 0) / this.volumeHistory.length;
-  }
-
-  private calculateSpeechConfidence(smoothedVolume: number): number {
-    if (smoothedVolume <= this.adaptiveThreshold) return 0;
-    
-    // Calculate confidence based on how much above threshold we are
-    const ratio = smoothedVolume / this.adaptiveThreshold;
-    return Math.min(1, (ratio - 1) * 2); // Scale confidence from 0 to 1
   }
 
   private startVoiceActivityDetection(): void {
@@ -206,38 +179,23 @@ export class AudioRecorder {
 
       this.analyser.getByteFrequencyData(dataArray);
       
-      // Calculate RMS energy (more robust than simple average)
-      let sum = 0;
-      for (let i = 0; i < bufferLength; i++) {
-        const normalized = dataArray[i] / 255;
-        sum += normalized * normalized;
-      }
-      const rmsVolume = Math.sqrt(sum / bufferLength);
+      // Simple average volume calculation
+      const average = dataArray.reduce((a, b) => a + b) / bufferLength;
+      const normalizedVolume = average / 255;
       
-      // Update background noise estimation
-      const smoothedVolume = this.smoothVolume(rmsVolume);
-      
-      // Only update background noise when not speaking
-      if (!this.isCurrentlySpeaking) {
-        this.updateBackgroundNoise(smoothedVolume);
-      }
-      
-      // Calculate speech confidence
-      const speechConfidence = this.calculateSpeechConfidence(smoothedVolume);
-      const isSpeaking = speechConfidence > this.speechConfidenceThreshold;
+      // Smooth the volume to reduce noise
+      const smoothedVolume = this.smoothVolume(normalizedVolume);
       
       const now = Date.now();
+      const isSpeaking = smoothedVolume > this.volumeThreshold;
       const wasSpeaking = this.isCurrentlySpeaking;
 
-      // Enhanced logging with new metrics
-      if (smoothedVolume > 0.001) {
-        console.log('🎤 Enhanced Voice Activity:', {
-          rmsVolume: rmsVolume.toFixed(4),
-          smoothedVolume: smoothedVolume.toFixed(4),
-          backgroundNoise: this.backgroundNoise.toFixed(4),
-          adaptiveThreshold: this.adaptiveThreshold.toFixed(4),
-          speechConfidence: speechConfidence.toFixed(3),
-          confidenceThreshold: this.speechConfidenceThreshold,
+      // Simple logging
+      if (smoothedVolume > 0.002) {
+        console.log('🎤 Voice Activity:', {
+          raw: normalizedVolume.toFixed(4),
+          smoothed: smoothedVolume.toFixed(4),
+          threshold: this.volumeThreshold,
           isSpeaking,
           wasSpeaking,
           isRecording: this.isRecording,
@@ -252,12 +210,12 @@ export class AudioRecorder {
         if (!this.isCurrentlySpeaking) {
           this.speechStartTime = now;
           this.isCurrentlySpeaking = true;
-          console.log('🎤 📢 SPEECH STARTED - confidence:', speechConfidence.toFixed(3));
+          console.log('🎤 📢 SPEECH STARTED - volume:', smoothedVolume.toFixed(4));
         }
         
         // Start recording if not already recording
         if (!this.isRecording && this.isContinuousMode) {
-          console.log('🎤 ✅ TRIGGERING RECORDING - confidence:', speechConfidence.toFixed(3), 'volume:', smoothedVolume.toFixed(4));
+          console.log('🎤 ✅ TRIGGERING RECORDING - volume:', smoothedVolume.toFixed(4));
           this.startRecordingSegment();
           this.onSpeechActivity?.(true);
         }
@@ -267,7 +225,7 @@ export class AudioRecorder {
           const silenceDuration = now - this.lastSpeechTime;
           
           if (silenceDuration > this.silenceThreshold) {
-            console.log('🎤 📢 SPEECH ENDED - silence for', silenceDuration, 'ms - confidence dropped to:', speechConfidence.toFixed(3));
+            console.log('🎤 📢 SPEECH ENDED - silence for', silenceDuration, 'ms');
             this.isCurrentlySpeaking = false;
             
             if (this.isRecording) {
