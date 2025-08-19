@@ -16,16 +16,13 @@ export const useRealtimeChat = (audioEnabled: boolean = true) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState('');
   
-  const pcRef = useRef<RTCPeerConnection | null>(null);
-  const dcRef = useRef<RTCDataChannel | null>(null);
-  const audioElementRef = useRef<HTMLAudioElement | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
   const recorderRef = useRef<AudioRecorder | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioQueueRef = useRef<Uint8Array[]>([]);
+  const isPlayingRef = useRef(false);
 
-  // Initialize audio element
   useEffect(() => {
-    audioElementRef.current = document.createElement("audio");
-    audioElementRef.current.autoplay = true;
-    
     return () => {
       cleanup();
     };
@@ -33,107 +30,137 @@ export const useRealtimeChat = (audioEnabled: boolean = true) => {
 
   const cleanup = () => {
     recorderRef.current?.stop();
-    dcRef.current?.close();
-    pcRef.current?.close();
-    if (audioElementRef.current) {
-      audioElementRef.current.srcObject = null;
+    wsRef.current?.close();
+    audioContextRef.current?.close();
+    audioQueueRef.current = [];
+    isPlayingRef.current = false;
+  };
+
+  const playAudioQueue = async () => {
+    if (isPlayingRef.current || audioQueueRef.current.length === 0 || !audioContextRef.current) return;
+    
+    isPlayingRef.current = true;
+    const audioData = audioQueueRef.current.shift()!;
+    
+    try {
+      // Convert base64 to audio buffer
+      const binaryString = atob(audioData.toString());
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      
+      // Create WAV file from PCM data
+      const wavBuffer = createWavFromPCM(bytes);
+      const audioBuffer = await audioContextRef.current.decodeAudioData(wavBuffer);
+      
+      const source = audioContextRef.current.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioContextRef.current.destination);
+      
+      source.onended = () => {
+        isPlayingRef.current = false;
+        playAudioQueue();
+      };
+      
+      source.start(0);
+    } catch (error) {
+      console.error('❌ Error playing audio:', error);
+      isPlayingRef.current = false;
+      playAudioQueue();
     }
   };
 
-  // WebRTC connection with OpenAI
+  const createWavFromPCM = (pcmData: Uint8Array): ArrayBuffer => {
+    const sampleRate = 24000;
+    const numChannels = 1;
+    const bitsPerSample = 16;
+    const blockAlign = (numChannels * bitsPerSample) / 8;
+    const byteRate = sampleRate * blockAlign;
+    
+    const wavHeader = new ArrayBuffer(44);
+    const view = new DataView(wavHeader);
+    
+    const writeString = (offset: number, string: string) => {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+      }
+    };
+    
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + pcmData.length, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, byteRate, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitsPerSample, true);
+    writeString(36, 'data');
+    view.setUint32(40, pcmData.length, true);
+    
+    const wavArray = new Uint8Array(wavHeader.byteLength + pcmData.length);
+    wavArray.set(new Uint8Array(wavHeader), 0);
+    wavArray.set(pcmData, wavHeader.byteLength);
+    
+    return wavArray.buffer;
+  };
+
+  // WebSocket connection (much simpler!)
   const connect = useCallback(async () => {
-    if (pcRef.current?.connectionState === 'connected') {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
       console.log('🔌 Already connected');
       return;
     }
 
-    console.log('🔌 Connecting to OpenAI Realtime API...');
+    console.log('🔌 Connecting via WebSocket proxy...');
     
     try {
-      // Get ephemeral token from our edge function
-      console.log('🔑 Requesting ephemeral token...');
-      const { data: tokenData, error } = await supabase.functions.invoke('openai_token');
+      // Create audio context
+      audioContextRef.current = new AudioContext({ sampleRate: 24000 });
       
-      if (error || !tokenData) {
-        throw new Error('Failed to get ephemeral token: ' + (error?.message || 'Unknown error'));
-      }
-
-      if (!tokenData.client_secret?.value) {
-        throw new Error("No ephemeral token received");
-      }
-
-      const ephemeralKey = tokenData.client_secret.value;
-      console.log('🔑 ✅ Got ephemeral token');
-
-      // Create peer connection
-      pcRef.current = new RTCPeerConnection();
-
-      // Set up remote audio
-      pcRef.current.ontrack = (e) => {
-        console.log('🎵 ✅ Remote audio track received');
-        if (audioElementRef.current) {
-          audioElementRef.current.srcObject = e.streams[0];
-        }
-      };
-
-      // Add local audio track
-      const ms = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          sampleRate: 24000,
-          channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        }
-      });
-      pcRef.current.addTrack(ms.getTracks()[0]);
-
-      // Set up data channel
-      dcRef.current = pcRef.current.createDataChannel("oai-events");
-      dcRef.current.addEventListener("message", (e) => {
-        const event = JSON.parse(e.data);
-        console.log("🔌 📨 Received event:", event.type);
-        handleRealtimeMessage(event);
-      });
-
-      // Create and set local description
-      const offer = await pcRef.current.createOffer();
-      await pcRef.current.setLocalDescription(offer);
-
-      // Connect to OpenAI's Realtime API
-      const baseUrl = "https://api.openai.com/v1/realtime";
-      const model = "gpt-4o-realtime-preview-2024-10-01";
-      console.log('🔌 Connecting to OpenAI WebRTC...');
+      // Get project URL and create WebSocket connection  
+      const hostname = window.location.hostname;
+      const projectRef = hostname.includes('localhost') ? 'localhost:54321' : hostname.split('.')[0] + '.functions.supabase.co';
+      const protocol = hostname.includes('localhost') ? 'ws' : 'wss';
+      const wsUrl = `${protocol}://${projectRef}/realtime_chat`;
       
-      const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
-        method: "POST",
-        body: offer.sdp,
-        headers: {
-          Authorization: `Bearer ${ephemeralKey}`,
-          "Content-Type": "application/sdp"
-        },
-      });
-
-      if (!sdpResponse.ok) {
-        const errorText = await sdpResponse.text();
-        throw new Error(`OpenAI WebRTC connection failed: ${sdpResponse.status} - ${errorText}`);
-      }
-
-      const answer = {
-        type: "answer" as RTCSdpType,
-        sdp: await sdpResponse.text(),
+      console.log('🔌 Connecting to:', wsUrl);
+      
+      wsRef.current = new WebSocket(wsUrl);
+      
+      wsRef.current.onopen = () => {
+        console.log('✅ WebSocket connected');
+        setIsConnected(true);
+        toast.success('Connected to AI William');
       };
       
-      await pcRef.current.setRemoteDescription(answer);
-      console.log("🔌 ✅ WebRTC connection established");
-
-      setIsConnected(true);
-      toast.success('Connected to AI William');
-
-      // Start recording
+      wsRef.current.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          handleRealtimeMessage(data);
+        } catch (error) {
+          console.error('❌ Error parsing WebSocket message:', error);
+        }
+      };
+      
+      wsRef.current.onerror = (error) => {
+        console.error('❌ WebSocket error:', error);
+        setIsConnected(false);
+        toast.error('Connection failed');
+      };
+      
+      wsRef.current.onclose = () => {
+        console.log('🔌 WebSocket closed');
+        setIsConnected(false);
+      };
+      
+      // Start audio recording
       recorderRef.current = new AudioRecorder((audioData) => {
-        if (dcRef.current?.readyState === 'open') {
-          dcRef.current.send(JSON.stringify({
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({
             type: 'input_audio_buffer.append',
             audio: encodeAudioData(audioData)
           }));
@@ -142,9 +169,9 @@ export const useRealtimeChat = (audioEnabled: boolean = true) => {
       
       await recorderRef.current.start();
       setIsRecording(true);
-
+      
     } catch (error) {
-      console.error('🔌 ❌ Connection error:', error);
+      console.error('❌ Connection error:', error);
       setIsConnected(false);
       toast.error('Connection failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
@@ -157,8 +184,10 @@ export const useRealtimeChat = (audioEnabled: boolean = true) => {
     setIsSpeaking(false);
   }, []);
 
-  // Handle realtime messages
+  // Handle realtime messages from WebSocket
   const handleRealtimeMessage = (event: any) => {
+    console.log('📨 Received:', event.type);
+    
     switch (event.type) {
       case 'session.created':
         console.log('🤖 ✅ Session created');
@@ -175,15 +204,20 @@ export const useRealtimeChat = (audioEnabled: boolean = true) => {
         break;
 
       case 'conversation.item.input_audio_transcription.completed':
-        console.log('🎤 📝 Transcription completed:', event.transcript);
-        if (event.transcript) {
-          addMessage('user', event.transcript);
+        console.log('🎤 📝 User transcription:', event.transcript);
+        if (event.transcript?.trim()) {
+          addMessage('user', event.transcript.trim());
         }
         break;
 
       case 'response.audio.delta':
-        // Audio is handled by WebRTC audio track
+        console.log('🔊 Audio delta received');
         setIsSpeaking(true);
+        // Queue audio for playback
+        if (event.delta) {
+          audioQueueRef.current.push(event.delta);
+          playAudioQueue();
+        }
         break;
 
       case 'response.audio_transcript.delta':
@@ -193,15 +227,26 @@ export const useRealtimeChat = (audioEnabled: boolean = true) => {
         break;
 
       case 'response.audio_transcript.done':
+        console.log('🤖 📝 AI transcription complete:', currentTranscript);
         if (currentTranscript.trim()) {
           addMessage('assistant', currentTranscript.trim());
           setCurrentTranscript('');
         }
         break;
 
+      case 'response.audio.done':
+        console.log('🔊 Audio response complete');
+        setIsSpeaking(false);
+        break;
+
       case 'response.done':
         console.log('🤖 ✅ Response completed');
         setIsSpeaking(false);
+        break;
+
+      case 'error':
+        console.error('🔌 ❌ WebSocket error:', event.message);
+        toast.error('Connection error: ' + event.message);
         break;
 
       default:
@@ -222,9 +267,9 @@ export const useRealtimeChat = (audioEnabled: boolean = true) => {
     console.log('💬 Added message:', { role, content: content.slice(0, 50) + '...' });
   };
 
-  // Send text message
+  // Send text message via WebSocket
   const sendTextMessage = useCallback((text: string) => {
-    if (!dcRef.current || dcRef.current.readyState !== 'open') {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
       toast.error('Not connected');
       return;
     }
@@ -233,7 +278,7 @@ export const useRealtimeChat = (audioEnabled: boolean = true) => {
       // Add user message immediately
       addMessage('user', text);
 
-      // Send to OpenAI
+      // Send to OpenAI via WebSocket proxy
       const event = {
         type: 'conversation.item.create',
         item: {
@@ -248,10 +293,10 @@ export const useRealtimeChat = (audioEnabled: boolean = true) => {
         }
       };
 
-      dcRef.current.send(JSON.stringify(event));
+      wsRef.current.send(JSON.stringify(event));
       
       // Trigger response
-      dcRef.current.send(JSON.stringify({ type: 'response.create' }));
+      wsRef.current.send(JSON.stringify({ type: 'response.create' }));
       
       console.log('💬 Sent text message:', text);
     } catch (error) {
@@ -260,10 +305,9 @@ export const useRealtimeChat = (audioEnabled: boolean = true) => {
     }
   }, []);
 
-  // Toggle recording (not needed with WebRTC)
+  // Toggle recording
   const toggleRecording = useCallback(() => {
-    // Recording is handled automatically by WebRTC
-    console.log('🎤 Recording is handled automatically by WebRTC');
+    console.log('🎤 Recording is handled automatically via server VAD');
   }, []);
 
   return {
