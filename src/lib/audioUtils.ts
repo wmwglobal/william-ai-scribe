@@ -110,8 +110,8 @@ export class AudioRecorder {
   private source: MediaStreamAudioSourceNode | null = null;
   private vadCheckInterval: number | null = null;
   private lastSpeechTime = 0;
-  private silenceThreshold = 800; // Reduced to 0.8 seconds for faster response
-  private volumeThreshold = 0.008; // Slightly raised to reduce false triggers
+  private silenceThreshold = 500; // Reduced to 0.5 seconds for faster response
+  private volumeThreshold = 0.005; // Lowered threshold for better detection
   private isCurrentlySpeaking = false;
   private maxRecordingDuration = 8000; // Reduced to 8 seconds per segment
   private recordingStartTime = 0;
