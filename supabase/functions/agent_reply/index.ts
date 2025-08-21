@@ -426,13 +426,16 @@ serve(async (req) => {
     const realIp = req.headers.get('x-real-ip');
     const clientId = forwarded || realIp || 'unknown';
     
-    // Check origin/referer (allow some flexibility for legitimate requests)
+    // Check origin/referer (enforce allowlist for security)
     const isValidOrigin = origin && ALLOWED_ORIGINS.includes(origin);
     const isValidReferer = referer && ALLOWED_ORIGINS.some(allowed => referer.startsWith(allowed));
     
     if (!isValidOrigin && !isValidReferer) {
-      console.warn('Suspicious request from origin:', origin, 'referer:', referer, 'client:', clientId);
-      // Log but don't block - edge functions need to be accessible for valid use cases
+      console.warn('Blocked request from unauthorized origin:', origin, 'referer:', referer, 'client:', clientId);
+      return new Response('Forbidden: Invalid origin', { 
+        status: 403,
+        headers: corsHeaders 
+      });
     }
     
     // Rate limiting
