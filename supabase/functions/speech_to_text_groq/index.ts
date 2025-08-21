@@ -7,7 +7,9 @@ const ALLOWED_ORIGINS = [
   'https://lovable.dev',
   'http://localhost:5173',
   'http://localhost:3000',
-  'https://2e10a6c0-0b90-4a50-8d27-471a5969124f.lovableproject.com'
+  'https://2e10a6c0-0b90-4a50-8d27-471a5969124f.lovableproject.com',
+  'https://2e10a6c0-0b90-4a50-8d27-471a5969124f.lovable.app',
+  'https://id-preview--2e10a6c0-0b90-4a50-8d27-471a5969124f.lovable.app'
 ];
 
 // Rate limiting map (simple in-memory for demo)
@@ -43,7 +45,11 @@ serve(async (req) => {
   const origin = req.headers.get('origin');
   const isAllowedOrigin = !origin || ALLOWED_ORIGINS.includes(origin);
   
+  console.log('Request received from origin:', origin);
+  console.log('Is allowed origin:', isAllowedOrigin);
+  
   if (!isAllowedOrigin) {
+    console.error('Origin not allowed:', origin);
     return new Response('Forbidden', { status: 403 });
   }
 
