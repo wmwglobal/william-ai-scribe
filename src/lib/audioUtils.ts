@@ -114,7 +114,7 @@ export class AudioRecorder {
   private transcriptStabilityThreshold = 3000; // 3 seconds of no transcript changes
   private volumeThreshold = 0.01; // Basic threshold for initial speech detection
   private isCurrentlySpeaking = false;
-  private maxRecordingDuration = 45000; // 45 seconds max per segment 
+  private maxRecordingDuration = 10000; // 10 seconds max per segment 
   private minRecordingDuration = 2000; // Minimum 2 seconds before allowing stop
   private recordingStartTime = 0;
   private lastTranscript = '';
@@ -179,54 +179,79 @@ export class AudioRecorder {
 
     const bufferLength = this.analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
-    let lastLogTime = 0;
+
+    // Hysteresis + hangover endpointing
+    const START_THRESH = this.volumeThreshold;   // trigger threshold to start
+    const STOP_THRESH = this.volumeThreshold * 0.5; // lower threshold to keep speaking until clearly silent
+    const SILENCE_WINDOW_MS = 700;              // how long below STOP to end utterance
+    const HANGOVER_MS = 180;                    // keep "speaking" true briefly after drop
+    const MIN_SPEECH_MS = this.minRecordingDuration; // honor existing min duration
+    let speaking = false;
+    let speechStartAt = 0;
+    let lastAboveStopAt = 0;
 
     const checkVoiceActivity = () => {
       if (!this.analyser || !this.isContinuousMode) return;
 
       this.analyser.getByteFrequencyData(dataArray);
-      
-      // Simple average volume calculation for initial speech detection
-      const average = dataArray.reduce((a, b) => a + b) / bufferLength;
-      const normalizedVolume = average / 255;
-      const smoothedVolume = this.smoothVolume(normalizedVolume);
-      
+
+      // Use average magnitude as a simple proxy for energy; smooth to avoid chatter
+      const average = dataArray.reduce((a, b) => a + b, 0) / bufferLength;
+      const normalized = average / 255;
+      const smoothed = this.smoothVolume(normalized);
       const now = Date.now();
-      const isSpeaking = smoothedVolume > this.volumeThreshold;
 
-      // Reduce logging frequency to prevent UI overload
-      if (smoothedVolume > 0.002 && now - lastLogTime > 1000) {
-        console.log('🎤 Voice Activity Summary:', {
-          smoothed: smoothedVolume.toFixed(4),
-          threshold: this.volumeThreshold,
-          isSpeaking,
-          isRecording: this.isRecording
-        });
-        lastLogTime = now;
-      }
+      // Determine if we are "above" thresholds depending on state
+      const aboveStart = smoothed > START_THRESH;
+      const aboveStop  = smoothed > STOP_THRESH;
 
-      if (isSpeaking) {
-        // Start recording if not already recording
-        if (!this.isRecording && this.isContinuousMode) {
-          console.log('🎤 ✅ TRIGGERING RECORDING - volume:', smoothedVolume.toFixed(4));
-          this.startRecordingSegment();
-          this.startTranscriptBasedDetection();
-          this.onSpeechActivity?.(true);
+      if (!speaking) {
+        if (aboveStart) {
+          // start of speech, begin recording a segment
+          speaking = true;
+          speechStartAt = now;
+          lastAboveStopAt = now;
+          if (!this.isRecording && this.isContinuousMode) {
+            this.startRecordingSegment();
+            this.startTranscriptBasedDetection();
+            this.onSpeechActivity?.(true);
+          }
         }
-      }
+      } else {
+        // we're in a speech segment
+        if (aboveStop) {
+          lastAboveStopAt = now;
+        }
 
-      // Fallback: max recording duration check
-      if (this.isRecording) {
-        const recordingDuration = now - this.recordingStartTime;
-        if (recordingDuration > this.maxRecordingDuration) {
-          console.log('🎤 🛑 Stopping recording due to max duration:', recordingDuration, 'ms');
+        // hangover to prevent chopping breaths
+        const effectiveEnd = Math.max(lastAboveStopAt, now - HANGOVER_MS);
+
+        // End if we've been below STOP for long enough and met min duration
+        const elapsed = now - speechStartAt;
+        const silentFor = now - lastAboveStopAt;
+        if (silentFor >= SILENCE_WINDOW_MS && elapsed >= MIN_SPEECH_MS) {
+          // stop segment
+          speaking = false;
           this.stopRecordingSegment();
           this.onSpeechActivity?.(false);
+          // reset timers
+          speechStartAt = 0;
+          lastAboveStopAt = 0;
+        } else {
+          // Safety valve: force stop at max duration
+          const recordingDuration = now - this.recordingStartTime;
+          if (this.isRecording && recordingDuration > this.maxRecordingDuration) {
+            this.stopRecordingSegment();
+            this.onSpeechActivity?.(false);
+            speaking = false;
+            speechStartAt = 0;
+            lastAboveStopAt = 0;
+          }
         }
       }
     };
 
-    // Reduce frequency from 50ms to 100ms to improve performance
+    // Run detector ~10Hz; lower CPU and adequate for endpointing
     this.vadCheckInterval = window.setInterval(checkVoiceActivity, 100);
   }
 

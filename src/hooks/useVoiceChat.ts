@@ -15,6 +15,9 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
   const [leadScore, setLeadScore] = useState(0);
   const [latestExtract, setLatestExtract] = useState<any>(null);
   const [transcript, setTranscript] = useState<Array<{speaker: 'visitor' | 'agent', text: string, timestamp: Date}>>([]);
+  // Track the "turn" to cancel/ignore stale responses on barge-in
+  const turnIdRef = useRef(0);
+
   const [debugCommands, setDebugCommands] = useState<Array<{command: string, timestamp: Date}>>([]);
   
   // Use refs to prevent state updates after unmount
@@ -94,6 +97,16 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
     };
   }, [sessionId, sessionSecret]); // Add dependencies so it recreates when session changes
 
+  // Barge-in: if user starts speaking while TTS is playing, stop audio and invalidate current turn
+  useEffect(() => {
+    if (isSpeaking && isSpeechActive) {
+      console.log('🛑 BARGE-IN: user speech detected during TTS playback. Stopping audio and cancelling in-flight turn.');
+      audioPlayerRef.current?.stopCurrentAudio();
+      // Invalidate current turn so any late responses are ignored
+      turnIdRef.current += 1;
+    }
+  }, [isSpeaking, isSpeechActive]);
+
   // Queue-based audio processing to prevent backlog
   async function processAudioQueue() {
     if (isProcessingQueueRef.current || audioQueueRef.current.length === 0) {
@@ -136,6 +149,7 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
   }
 
   async function processAudioBlob(audioBlob: Blob) {
+    const myTurn = ++turnIdRef.current;
     console.log('🎤 ===== processAudioBlob START =====');
     console.log('🎤 Blob size:', audioBlob.size, 'bytes');
 
@@ -186,6 +200,12 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
       
       // Add user message to transcript
       if (isMountedRef.current) {
+        
+        // Stale turn? If user barged in, ignore this response.
+        if (myTurn !== turnIdRef.current) {
+          console.log('⏭️ Ignoring agent text due to barge-in.');
+          return;
+        }
         setTranscript(prev => [...prev, {
           speaker: 'visitor',
           text: userMessage,
@@ -195,7 +215,7 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
 
       // Send to agent for processing
       console.log('🎤 🤖 About to send to agent:', userMessage);
-      await sendToAgent(userMessage);
+      await sendToAgent(userMessage, myTurn);
       console.log('🎤 ✅ Agent processing complete');
     } catch (error) {
       console.error('🎤 ❌ Error processing audio:', error);
@@ -230,7 +250,7 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
     }
   }
 
-  async function sendToAgent(userMessage: string) {
+  async function sendToAgent(userMessage: string, myTurn?: number) {
     if (!sessionId || !sessionSecret || !isMountedRef.current) {
       console.log('🤖 Skipping agent request - session not ready or component unmounted');
       return;
@@ -239,6 +259,12 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
     try {
       // Show typing indicator immediately
       if (isMountedRef.current) setIsTyping(true);
+      
+      // If a barge-in occurred, abandon this turn early
+      if (myTurn !== undefined && myTurn !== turnIdRef.current) {
+        console.log('⏩ Abandoning turn due to barge-in before agent call.');
+        return;
+      }
       
       const response = await supabase.functions.invoke('agent_reply', {
         body: {
@@ -309,6 +335,12 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
       // Play TTS audio if available and audio is enabled
       if (agentResponse.audio_base64 && audioEnabled && audioPlayerRef.current) {
         console.log('🎵 useVoiceChat: Playing TTS audio, length:', agentResponse.audio_base64.length);
+        
+        // Stale turn? If user barged in, skip audio playback.
+        if (myTurn !== undefined && myTurn !== turnIdRef.current) {
+          console.log('🔇 Skipping audio playback due to barge-in.');
+          return;
+        }
         await audioPlayerRef.current.playAudio(agentResponse.audio_base64);
         
         // Handle debug commands from TTS response
