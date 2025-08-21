@@ -29,6 +29,7 @@ export default function Chat() {
   const [selectedModel, setSelectedModel] = useState(getDefaultModel());
   const [selectedPersonality, setSelectedPersonality] = useState(getDefaultPersonality());
   const [audioEnabled, setAudioEnabled] = useState(true);
+  const [continuousMode, setContinuousMode] = useState(false);
   
   // Voice chat hook
   const {
@@ -135,22 +136,25 @@ export default function Chat() {
     }
   };
 
-  const handleRecordingToggle = async () => {
+  const handleContinuousToggle = async () => {
     if (!sessionId) {
       toast.error('Please start a session first');
       return;
     }
 
     try {
-      if (isRecording) {
+      if (continuousMode) {
         stopRecording();
-        toast.success('Microphone turned off');
+        setContinuousMode(false);
+        toast.success('Continuous listening stopped');
       } else {
         await startRecording();
-        toast.success('Microphone is now listening...');
+        setContinuousMode(true);
+        toast.success('Continuous listening started - I\'ll automatically detect when you speak and stop talking!');
       }
     } catch (error) {
       toast.error('Microphone access failed');
+      setContinuousMode(false);
     }
   };
 
@@ -201,6 +205,21 @@ export default function Chat() {
                   {audioEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
                 </Button>
               </div>
+              
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div>
+                  <span className="text-sm font-medium">Continuous Listening</span>
+                  <p className="text-xs text-muted-foreground">Auto-detect when you start and stop talking</p>
+                </div>
+                <Button
+                  variant={continuousMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={handleContinuousToggle}
+                  disabled={!audioEnabled}
+                >
+                  {continuousMode ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+                </Button>
+              </div>
             </div>
 
             <Button 
@@ -233,11 +252,11 @@ export default function Chat() {
             <div>
               <h1 className="font-semibold text-sm">AI William</h1>
               <div className="flex items-center gap-2">
-              <p className="text-xs text-muted-foreground">
-                {!sessionStarted ? "Ready to start" : 
-                 isRecording ? (isSpeechActive ? "Listening..." : "Microphone on") :
-                 isSpeaking ? "Speaking..." : "Microphone off"}
-              </p>
+               <p className="text-xs text-muted-foreground">
+                 {!sessionStarted ? "Ready to start" : 
+                  continuousMode ? (isSpeechActive ? "🗣️ Detected speech" : isProcessing ? "🎵 Transcribing..." : "👂 Auto-listening") :
+                  isSpeaking ? "🎵 Speaking..." : "💬 Manual mode"}
+               </p>
               <MoodRing currentMode={selectedPersonality.id} />
               <div className={`w-1.5 h-1.5 rounded-full ${selectedModel.color} bg-gradient-to-r`} />
               <span className="text-xs text-muted-foreground">{selectedModel.name}</span>
@@ -368,14 +387,14 @@ export default function Chat() {
             </Button>
 
             <Button
-              variant={isRecording ? "default" : "outline"}
+              variant={continuousMode ? "default" : "outline"}
               size="sm"
-              onClick={handleRecordingToggle}
+              onClick={handleContinuousToggle}
               disabled={!audioEnabled || isProcessing || isTyping}
-              className={`flex-shrink-0 ${isRecording ? 'bg-green-600 hover:bg-green-700' : ''}`}
-              title={isRecording ? 'Turn off microphone' : 'Turn on microphone'}
+              className={`flex-shrink-0 ${continuousMode ? 'bg-green-600 hover:bg-green-700' : ''}`}
+              title={continuousMode ? 'Stop continuous listening' : 'Start continuous listening (auto-detects speech)'}
             >
-              {isRecording ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+              {continuousMode ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
             </Button>
 
             {isSpeaking && (
@@ -418,28 +437,28 @@ export default function Chat() {
           {/* Status indicators */}
           <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
             <div className="flex items-center gap-4">
-              {isRecording && !isSpeechActive && (
+              {continuousMode && !isSpeechActive && !isProcessing && (
                 <span className="flex items-center gap-1 text-green-600">
                   <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse" />
-                  Mic on - ready to listen
+                  🎧 Listening continuously - speak naturally and I'll auto-detect when you're done!
                 </span>
               )}
               {isSpeechActive && (
                 <span className="flex items-center gap-1 text-blue-600">
                   <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" />
-                  Speaking detected...
+                  🗣️ Speech detected - recording your message...
                 </span>
               )}
               {isProcessing && (
                 <span className="flex items-center gap-1 text-blue-500">
                   <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                  Processing audio...
+                  🎵 Converting speech to text...
                 </span>
               )}
               {isSpeaking && (
                 <span className="flex items-center gap-1 text-blue-500">
                   <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                  Playing...
+                  🎵 William is speaking...
                 </span>
               )}
             </div>
