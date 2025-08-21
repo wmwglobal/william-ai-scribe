@@ -180,15 +180,16 @@ export class AudioRecorder {
     const bufferLength = this.analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
 
-    // Hysteresis + hangover endpointing
+    // Hysteresis + hangover endpointing - made more responsive
     const START_THRESH = this.volumeThreshold;   // trigger threshold to start
-    const STOP_THRESH = this.volumeThreshold * 0.5; // lower threshold to keep speaking until clearly silent
-    const SILENCE_WINDOW_MS = 700;              // how long below STOP to end utterance
-    const HANGOVER_MS = 180;                    // keep "speaking" true briefly after drop
-    const MIN_SPEECH_MS = this.minRecordingDuration; // honor existing min duration
+    const STOP_THRESH = this.volumeThreshold * 0.3; // lower threshold to keep speaking until clearly silent
+    const SILENCE_WINDOW_MS = 500;              // reduced from 700ms - how long below STOP to end utterance
+    const HANGOVER_MS = 100;                    // reduced from 180ms - keep "speaking" true briefly after drop
+    const MIN_SPEECH_MS = 1000;                 // reduced from 2000ms - minimum duration
     let speaking = false;
     let speechStartAt = 0;
     let lastAboveStopAt = 0;
+    let lastLogTime = 0;
 
     const checkVoiceActivity = () => {
       if (!this.analyser || !this.isContinuousMode) return;
@@ -205,9 +206,24 @@ export class AudioRecorder {
       const aboveStart = smoothed > START_THRESH;
       const aboveStop  = smoothed > STOP_THRESH;
 
+      // Debug logging every second
+      if (smoothed > 0.001 && now - lastLogTime > 1000) {
+        console.log('🎤 VAD Debug:', {
+          smoothed: smoothed.toFixed(4),
+          startThresh: START_THRESH.toFixed(4),
+          stopThresh: STOP_THRESH.toFixed(4),
+          aboveStart,
+          aboveStop,
+          speaking,
+          isRecording: this.isRecording
+        });
+        lastLogTime = now;
+      }
+
       if (!speaking) {
         if (aboveStart) {
           // start of speech, begin recording a segment
+          console.log('🎤 ✅ SPEECH START - volume:', smoothed.toFixed(4));
           speaking = true;
           speechStartAt = now;
           lastAboveStopAt = now;
@@ -223,14 +239,12 @@ export class AudioRecorder {
           lastAboveStopAt = now;
         }
 
-        // hangover to prevent chopping breaths
-        const effectiveEnd = Math.max(lastAboveStopAt, now - HANGOVER_MS);
-
         // End if we've been below STOP for long enough and met min duration
         const elapsed = now - speechStartAt;
         const silentFor = now - lastAboveStopAt;
         if (silentFor >= SILENCE_WINDOW_MS && elapsed >= MIN_SPEECH_MS) {
           // stop segment
+          console.log('🎤 🛑 SPEECH END - silent for:', silentFor, 'ms, total duration:', elapsed, 'ms');
           speaking = false;
           this.stopRecordingSegment();
           this.onSpeechActivity?.(false);
@@ -241,6 +255,7 @@ export class AudioRecorder {
           // Safety valve: force stop at max duration
           const recordingDuration = now - this.recordingStartTime;
           if (this.isRecording && recordingDuration > this.maxRecordingDuration) {
+            console.log('🎤 🛑 FORCE STOP - max duration reached:', recordingDuration, 'ms');
             this.stopRecordingSegment();
             this.onSpeechActivity?.(false);
             speaking = false;
