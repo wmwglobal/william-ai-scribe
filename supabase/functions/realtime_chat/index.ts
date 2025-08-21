@@ -27,7 +27,7 @@ serve(async (req) => {
   let sessionConfigured = false;
 
   // Connect to OpenAI Realtime API
-  const connectToOpenAI = () => {
+  const connectToOpenAI = async () => {
     console.log('🤖 Connecting to OpenAI Realtime API...');
     
     const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
@@ -42,16 +42,73 @@ serve(async (req) => {
     
     console.log('🤖 API key found, length:', OPENAI_API_KEY.length);
 
-    // Use the correct OpenAI Realtime WebSocket URL with API key as query parameter
-    const openaiUrl = `wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17`;
-    console.log('🤖 Connecting to:', openaiUrl);
-    
-    openAISocket = new WebSocket(openaiUrl, {
-      headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "OpenAI-Beta": "realtime=v1"
+    try {
+      // First, get an ephemeral token from OpenAI
+      console.log('🤖 Getting ephemeral token...');
+      const sessionResponse = await fetch("https://api.openai.com/v1/realtime/sessions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-realtime-preview-2024-12-17",
+          voice: "alloy",
+          instructions: "You are AI William, a helpful assistant. Be conversational and engaging."
+        }),
+      });
+
+      if (!sessionResponse.ok) {
+        const errorText = await sessionResponse.text();
+        console.error('🤖 ❌ Failed to get session:', sessionResponse.status, errorText);
+        socket.send(JSON.stringify({ 
+          type: 'error', 
+          message: `Failed to create OpenAI session: ${errorText}` 
+        }));
+        return;
       }
-    });
+
+      const sessionData = await sessionResponse.json();
+      console.log('🤖 ✅ Got ephemeral token');
+      
+      if (!sessionData.client_secret?.value) {
+        console.error('🤖 ❌ No client_secret in response');
+        socket.send(JSON.stringify({ 
+          type: 'error', 
+          message: 'No ephemeral token received from OpenAI' 
+        }));
+        return;
+      }
+
+      // Now connect using the ephemeral token
+      const ephemeralKey = sessionData.client_secret.value;
+      const openaiUrl = `wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17`;
+      console.log('🤖 Connecting with ephemeral token...');
+      
+      // Create WebSocket with auth header
+      const wsHeaders: HeadersInit = {
+        "Authorization": `Bearer ${ephemeralKey}`,
+        "OpenAI-Beta": "realtime=v1"
+      };
+      
+      // For Deno, we need to use a different approach for WebSocket auth
+      openAISocket = new WebSocket(openaiUrl);
+      
+      // Add custom headers after creation (Deno-specific workaround)
+      // @ts-ignore - Deno WebSocket implementation allows this
+      if (openAISocket.url) {
+        // @ts-ignore
+        openAISocket._headers = wsHeaders;
+      }
+
+    } catch (error) {
+      console.error('🤖 ❌ Failed to setup OpenAI connection:', error);
+      socket.send(JSON.stringify({ 
+        type: 'error', 
+        message: 'Failed to connect to OpenAI: ' + error.message
+      }));
+      return;
+    }
 
     openAISocket.onopen = () => {
       console.log('🤖 ✅ Connected to OpenAI Realtime API successfully');
@@ -104,7 +161,6 @@ serve(async (req) => {
 
     openAISocket.onerror = (error) => {
       console.error('🤖 ❌ OpenAI WebSocket error:', error);
-      console.error('🤖 ❌ Error details:', JSON.stringify(error));
       socket.send(JSON.stringify({ 
         type: 'error', 
         message: 'OpenAI connection error: ' + (error.message || 'Unknown error')
@@ -113,11 +169,6 @@ serve(async (req) => {
 
     openAISocket.onclose = (event) => {
       console.log('🤖 🔌 OpenAI WebSocket closed:', event.code, event.reason);
-      console.log('🤖 🔌 Close details:', {
-        code: event.code,
-        reason: event.reason,
-        wasClean: event.wasClean
-      });
       socket.send(JSON.stringify({ 
         type: 'error', 
         message: `OpenAI connection closed: ${event.code} - ${event.reason || 'Unknown reason'}`
