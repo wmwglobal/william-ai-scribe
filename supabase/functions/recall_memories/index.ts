@@ -108,57 +108,56 @@ serve(async (req) => {
       });
     }
 
-    const { query, session_id, session_secret, visitor_id, user_id, scopes = ['medium', 'long', 'episodic'], limit = 5 } = await req.json();
+    const { query, session_id, session_secret, scopes = ['medium', 'long', 'episodic'], limit = 5 } = await req.json();
 
-    // Validate session if session_id provided
-    if (session_id && session_secret) {
-      const { data: session, error: sessionError } = await supabase
-        .from('sessions')
-        .select('id, created_at, session_secret')
-        .eq('id', session_id)
-        .eq('session_secret', session_secret)
-        .single();
-
-      if (sessionError || !session) {
-        console.log('Session validation failed');
-        return new Response(JSON.stringify({ error: 'Invalid session' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      // Check session TTL (24 hours)
-      const sessionAge = Date.now() - new Date(session.created_at).getTime();
-      if (sessionAge > 24 * 60 * 60 * 1000) {
-        console.log('Session expired');
-        return new Response(JSON.stringify({ error: 'Session expired' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+    // SECURITY: Always require session validation for accessing memories
+    if (!session_id || !session_secret) {
+      console.log('Missing required session credentials');
+      return new Response(JSON.stringify({ error: 'Session credentials required' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    console.log(`Recalling memories for session: ${session_id ? '[REDACTED]' : 'none'}`);
+    // Validate session credentials and TTL
+    const { data: session, error: sessionError } = await supabase
+      .from('sessions')
+      .select('id, created_at, session_secret, visitor_id, created_by')
+      .eq('id', session_id)
+      .eq('session_secret', session_secret)
+      .single();
+
+    if (sessionError || !session) {
+      console.log('Session validation failed');
+      return new Response(JSON.stringify({ error: 'Invalid session' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Check session TTL (24 hours)
+    const sessionAge = Date.now() - new Date(session.created_at).getTime();
+    if (sessionAge > 24 * 60 * 60 * 1000) {
+      console.log('Session expired');
+      return new Response(JSON.stringify({ error: 'Session expired' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log(`Recalling memories for validated session: [REDACTED]`);
 
     // Generate embedding for the query
     const queryEmbedding = await generateEmbedding(query);
 
-    // Build the recall query
-    let recallQuery = supabase
+    // SECURITY: Only filter by validated session_id - never trust client-provided user_id or visitor_id
+    const recallQuery = supabase
       .from('memories')
       .select('*')
+      .eq('session_id', session_id)
       .in('scope', scopes)
       .order('importance', { ascending: false })
       .limit(limit);
-
-    // Filter by session, user, or visitor
-    if (session_id) {
-      recallQuery = recallQuery.eq('session_id', session_id);
-    } else if (user_id) {
-      recallQuery = recallQuery.eq('user_id', user_id);
-    } else if (visitor_id) {
-      recallQuery = recallQuery.eq('visitor_id', visitor_id);
-    }
 
     const { data: memories, error } = await recallQuery;
 

@@ -13,10 +13,10 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.recall_memories]
-verify_jwt = false
+verify_jwt = true
 
 [functions.save_memory]
-verify_jwt = false
+verify_jwt = true
 
 [functions.summarize_session]
 verify_jwt = false
