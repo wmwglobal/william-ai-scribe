@@ -92,7 +92,7 @@ serve(async (req) => {
         JSON.stringify({ error: `Groq API error: ${response.status}` }), 
         { 
           status: response.status,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...responseHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
@@ -108,7 +108,7 @@ serve(async (req) => {
         JSON.stringify({ error: 'No response from AI' }), 
         { 
           status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...responseHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
@@ -120,7 +120,7 @@ serve(async (req) => {
         usage: data.usage
       }), 
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...responseHeaders, 'Content-Type': 'application/json' }
       }
     );
 
@@ -130,7 +130,7 @@ serve(async (req) => {
       JSON.stringify({ error: 'Internal server error' }), 
       { 
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...responseHeaders, 'Content-Type': 'application/json' }
       }
     );
   }

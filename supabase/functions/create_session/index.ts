@@ -4,21 +4,84 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const serviceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
+// Security: Allowed origins for enhanced protection
+const ALLOWED_ORIGINS = [
+  'http://localhost:5173', 
+  'https://suyervjawrmbyyxetblv.supabase.co',
+  'https://2e10a6c0-0b90-4a50-8d27-471a5969124f.sandbox.lovable.dev'
+];
+
+// Rate limiting map for basic protection
+const rateLimitMap = new Map();
+
+function checkRateLimit(clientId: string): boolean {
+  const now = Date.now();
+  const clientRequests = rateLimitMap.get(clientId) || [];
+  
+  // Remove requests older than 1 minute
+  const recentRequests = clientRequests.filter((time: number) => now - time < 60000);
+  
+  // Allow max 30 requests per minute per client (more restrictive than agent_reply)
+  if (recentRequests.length >= 30) {
+    return false;
+  }
+  
+  recentRequests.push(now);
+  rateLimitMap.set(clientId, recentRequests);
+  return true;
+}
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req) => {
+  // Enhanced security: Origin and rate limiting validation
+  const origin = req.headers.get('origin');
+  const referer = req.headers.get('referer');
+  const forwarded = req.headers.get('x-forwarded-for');
+  const realIp = req.headers.get('x-real-ip');
+  const clientId = forwarded || realIp || 'unknown';
+  
+  // Check origin/referer (enforce allowlist for security)
+  const isValidOrigin = origin && ALLOWED_ORIGINS.includes(origin);
+  const isValidReferer = referer && ALLOWED_ORIGINS.some(allowed => referer.startsWith(allowed));
+  
+  if (!isValidOrigin && !isValidReferer) {
+    console.warn('Blocked request from unauthorized origin:', origin, 'referer:', referer, 'client:', clientId);
+    return new Response('Forbidden: Invalid origin', { 
+      status: 403,
+      headers: { 
+        'Access-Control-Allow-Origin': origin || '',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+      }
+    });
+  }
+  
+  // Dynamic CORS headers based on validated origin
+  const dynamicCorsHeaders = {
+    'Access-Control-Allow-Origin': origin || '',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: dynamicCorsHeaders });
   }
 
   if (req.method !== 'POST') {
     return new Response('Method Not Allowed', { 
       status: 405,
-      headers: corsHeaders 
+      headers: dynamicCorsHeaders 
+    });
+  }
+
+  // Rate limiting
+  if (!checkRateLimit(clientId)) {
+    console.warn('Rate limit exceeded for client:', clientId);
+    return new Response('Rate limit exceeded. Please try again later.', { 
+      status: 429, 
+      headers: { ...dynamicCorsHeaders, 'Retry-After': '60' }
     });
   }
 
@@ -26,7 +89,7 @@ serve(async (req) => {
     const { visitor_id, consent = false } = await req.json();
     const supabase = createClient(supabaseUrl, serviceRole);
 
-    console.log('Creating session for visitor:', visitor_id);
+    console.log('Creating session for visitor:', visitor_id?.substring(0, 8) + '...'); // PII minimization
 
     // Generate session secret for authorization
     const session_secret = crypto.randomUUID();
@@ -46,7 +109,7 @@ serve(async (req) => {
       console.error('Database error:', error);
       return new Response(JSON.stringify({ error: error.message }), { 
         status: 500,
-        headers: { ...corsHeaders, 'content-type': 'application/json' }
+        headers: { ...dynamicCorsHeaders, 'content-type': 'application/json' }
       });
     }
 
@@ -68,7 +131,7 @@ serve(async (req) => {
       session_secret: data.session_secret,
       realtime_token 
     }), {
-      headers: { ...corsHeaders, 'content-type': 'application/json' },
+      headers: { ...dynamicCorsHeaders, 'content-type': 'application/json' },
     });
 
   } catch (error) {
@@ -77,7 +140,7 @@ serve(async (req) => {
       error: 'Internal server error' 
     }), { 
       status: 500,
-      headers: { ...corsHeaders, 'content-type': 'application/json' }
+      headers: { ...dynamicCorsHeaders, 'content-type': 'application/json' }
     });
   }
 });

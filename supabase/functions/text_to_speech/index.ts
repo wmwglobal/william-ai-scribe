@@ -35,7 +35,7 @@ serve(async (req) => {
   if (req.method !== 'POST') {
     return new Response('Method Not Allowed', { 
       status: 405,
-      headers: corsHeaders 
+      headers: responseHeaders 
     });
   }
 
@@ -45,7 +45,7 @@ serve(async (req) => {
     if (!text) {
       return new Response(JSON.stringify({ error: 'Text is required' }), {
         status: 400,
-        headers: { ...corsHeaders, 'content-type': 'application/json' }
+        headers: { ...responseHeaders, 'content-type': 'application/json' }
       });
     }
 
@@ -134,7 +134,7 @@ serve(async (req) => {
       original_text: text,
       debug_commands: debugCommands
     }), {
-      headers: { ...corsHeaders, 'content-type': 'application/json' }
+      headers: { ...responseHeaders, 'content-type': 'application/json' }
     });
 
   } catch (error) {
@@ -143,7 +143,7 @@ serve(async (req) => {
       error: error.message || 'Text-to-speech generation failed'
     }), {
       status: 500,
-      headers: { ...corsHeaders, 'content-type': 'application/json' }
+      headers: { ...responseHeaders, 'content-type': 'application/json' }
     });
   }
 });

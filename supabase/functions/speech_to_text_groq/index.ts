@@ -95,16 +95,22 @@ serve(async (req) => {
 
     const { data: session, error: sessionError } = await supabase
       .from('sessions')
-      .select('id, session_secret')
+      .select('id, session_secret, created_at')
       .eq('id', session_id)
       .eq('session_secret', session_secret)
+      .gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // 24h TTL
       .single();
 
     if (sessionError || !session) {
-      console.error('Session verification failed:', sessionError);
+      const errorMsg = sessionError?.message?.includes('No rows') ? 'Session expired, please start a new session' : 'Invalid session credentials';
+      console.error('Session verification failed:', sessionError?.message);
       return new Response(
-        JSON.stringify({ error: 'Invalid session credentials' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: errorMsg }),
+        { status: 401, headers: { 
+          'Access-Control-Allow-Origin': origin || '*',
+          'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+          'Content-Type': 'application/json' 
+        } }
       );
     }
 
@@ -170,7 +176,7 @@ serve(async (req) => {
     const transcribedText = groqData.text || '';
 
     const duration = Date.now() - startTime;
-    console.log(`ASR completed in ${duration}ms, text length: ${transcribedText.length}`);
+    console.log(`ASR completed in ${duration}ms, text length: ${transcribedText.length}, session: ${session_id}`); // Log without PII
 
     return new Response(
       JSON.stringify({ 

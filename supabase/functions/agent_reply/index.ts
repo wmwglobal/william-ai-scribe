@@ -412,11 +412,21 @@ async function callOpenAIWithFunctions(messages: any[], systemPrompt: string, se
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    const origin = req.headers.get('origin');
+    const dynamicCorsHeaders = {
+      'Access-Control-Allow-Origin': origin || '',
+      'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    };
+    return new Response(null, { headers: dynamicCorsHeaders });
   }
 
   if (req.method !== 'POST') {
-    return new Response('Method Not Allowed', { status: 405, headers: corsHeaders });
+    const origin = req.headers.get('origin');
+    const dynamicCorsHeaders = {
+      'Access-Control-Allow-Origin': origin || '',
+      'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    };
+    return new Response('Method Not Allowed', { status: 405, headers: dynamicCorsHeaders });
   }
 
   try {
@@ -435,16 +445,25 @@ serve(async (req) => {
       console.warn('Blocked request from unauthorized origin:', origin, 'referer:', referer, 'client:', clientId);
       return new Response('Forbidden: Invalid origin', { 
         status: 403,
-        headers: corsHeaders 
+        headers: {
+          'Access-Control-Allow-Origin': origin || '',
+          'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+        }
       });
     }
+    
+    // Dynamic CORS headers based on validated origin
+    const dynamicCorsHeaders = {
+      'Access-Control-Allow-Origin': origin || '',
+      'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    };
     
     // Rate limiting
     if (!checkRateLimit(clientId)) {
       console.warn('Rate limit exceeded for client:', clientId);
       return new Response('Rate limit exceeded. Please try again later.', { 
         status: 429, 
-        headers: { ...corsHeaders, 'Retry-After': '60' }
+        headers: { ...dynamicCorsHeaders, 'Retry-After': '60' }
       });
     }
     const { session_id, user_message, session_secret, mode } = await req.json();
@@ -452,29 +471,31 @@ serve(async (req) => {
     if (!session_id || !user_message || !session_secret) {
       return new Response(JSON.stringify({ error: 'session_id, user_message, and session_secret required' }), {
         status: 400,
-        headers: { ...corsHeaders, 'content-type': 'application/json' }
+        headers: { ...dynamicCorsHeaders, 'content-type': 'application/json' }
       });
     }
 
     const supabase = createClient(supabaseUrl, serviceRole);
     
-    // Verify session authorization and get current mode
+    // Verify session authorization with time-boxing and get current mode
     const { data: session, error: sessionError } = await supabase
       .from('sessions')
-      .select('id, current_mode, visitor_id, created_by')
+      .select('id, current_mode, visitor_id, created_by, created_at')
       .eq('id', session_id)
       .eq('session_secret', session_secret)
+      .gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // 24h TTL
       .single();
 
     if (sessionError || !session) {
-      console.error('Invalid session authorization:', sessionError?.message);
-      return new Response(JSON.stringify({ error: 'Invalid session' }), { 
+      const errorMsg = sessionError?.message?.includes('No rows') ? 'Session expired or invalid' : 'Invalid session';
+      console.error('Session authorization failed:', sessionError?.message);
+      return new Response(JSON.stringify({ error: errorMsg }), {
         status: 401,
-        headers: { ...corsHeaders, 'content-type': 'application/json' }
+        headers: { ...dynamicCorsHeaders, 'content-type': 'application/json' }
       });
     }
 
-    console.log(`Processing message for session ${session_id}:`, user_message?.substring(0, 50) + '...');
+    console.log(`Processing message for session ${session_id}, visitor: ${session.visitor_id?.substring(0, 8)}...`); // PII minimization
 
     // Update session mode if provided
     const currentMode = mode || session.current_mode || 'entrepreneur';
@@ -739,16 +760,21 @@ IMPORTANT: This is the first message. Be casual and conversational like you're m
       session_id,
       current_mode: currentMode
     }), {
-      headers: { ...corsHeaders, 'content-type': 'application/json' }
+      headers: { ...dynamicCorsHeaders, 'content-type': 'application/json' }
     });
 
   } catch (error) {
     console.error('Error in agent_reply:', error);
+    const origin = req.headers.get('origin');
+    const dynamicCorsHeaders = {
+      'Access-Control-Allow-Origin': origin || '',
+      'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    };
     return new Response(JSON.stringify({ 
       error: error.message || 'Agent reply failed'
     }), {
       status: 500,
-      headers: { ...corsHeaders, 'content-type': 'application/json' }
+      headers: { ...dynamicCorsHeaders, 'content-type': 'application/json' }
     });
   }
 });
