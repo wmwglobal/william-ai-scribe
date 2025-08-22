@@ -161,6 +161,7 @@ export class AudioRecorder {
   private volumeHistory: number[] = [];
   private readonly volumeHistorySize = 5;
   private isProcessingTranscription = false; // Prevent overlapping transcription checks
+  private isPaused = false; // Track if listening is temporarily paused
 
   constructor(
     private onDataAvailable?: (audioBlob: Blob) => void,
@@ -259,7 +260,7 @@ export class AudioRecorder {
       }
 
       if (!speaking) {
-        if (aboveStart) {
+        if (aboveStart && !this.isPaused) { // Don't start recording if paused
           // start of speech, begin recording a segment
           console.log('🎤 ✅ SPEECH START - volume:', smoothed.toFixed(4));
           speaking = true;
@@ -545,6 +546,35 @@ export class AudioRecorder {
 
   getIsSpeaking(): boolean {
     return this.isRecording; // Currently recording a speech segment
+  }
+
+  // Pause listening to prevent feedback when AI is speaking
+  pauseListening(): void {
+    console.log('🎤 PAUSE: Temporarily pausing microphone to prevent feedback');
+    this.isPaused = true;
+    
+    // Stop any active recording segment
+    this.stopRecordingSegment();
+    
+    // Mute the audio stream if available
+    if (this.stream) {
+      this.stream.getAudioTracks().forEach(track => {
+        track.enabled = false;
+      });
+    }
+  }
+
+  // Resume listening after AI finishes speaking
+  resumeListening(): void {
+    console.log('🎤 RESUME: Re-enabling microphone after AI finished speaking');
+    this.isPaused = false;
+    
+    // Unmute the audio stream if available
+    if (this.stream) {
+      this.stream.getAudioTracks().forEach(track => {
+        track.enabled = true;
+      });
+    }
   }
 }
 

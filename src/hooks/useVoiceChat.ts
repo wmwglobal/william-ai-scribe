@@ -35,7 +35,18 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
     
     // Initialize audio player and recorder
     audioPlayerRef.current = new AudioPlayer((playing) => {
-      if (isMountedRef.current) setIsSpeaking(playing);
+      if (isMountedRef.current) {
+        setIsSpeaking(playing);
+        
+        // CRITICAL: Mute microphone when AI is speaking to prevent feedback
+        if (playing) {
+          console.log('🎵 AI started speaking - temporarily muting microphone to prevent feedback');
+          audioRecorderRef.current?.pauseListening();
+        } else {
+          console.log('🎵 AI finished speaking - resuming microphone listening');
+          audioRecorderRef.current?.resumeListening();
+        }
+      }
     });
     
     // Create the audio recorder with the callback function
