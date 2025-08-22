@@ -223,7 +223,23 @@ export default function Chat() {
             </div>
 
             <Button 
-              onClick={handleStartSession} 
+              onClick={async () => {
+                console.log('🎵 User clicked Start Conversation - enabling audio context');
+                
+                // Enable audio context with user interaction
+                try {
+                  const audioContext = new AudioContext();
+                  if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                    console.log('🎵 AudioContext resumed after user interaction');
+                  }
+                  audioContext.close(); // Close temporary context
+                } catch (error) {
+                  console.error('🎵 Error enabling audio context:', error);
+                }
+                
+                handleStartSession();
+              }} 
               className="w-full"
               size="lg"
             >

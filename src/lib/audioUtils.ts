@@ -49,7 +49,8 @@ export class AudioPlayer {
         };
         
         audio.onerror = (error) => {
-          console.error('Audio playback error:', error);
+          console.error('🎵 ❌ Audio playback error:', error);
+          console.error('🎵 Error details:', audio.error);
           this.isPlaying = false;
           this.currentAudio = null;
           this.onPlayingChange?.(false);
@@ -57,16 +58,51 @@ export class AudioPlayer {
           reject(new Error('Audio playback failed'));
         };
         
+        audio.oncanplaythrough = () => {
+          console.log('🎵 Audio can play through - buffer ready');
+        };
+        
         // Start playback with user interaction check
-        const playPromise = audio.play();
-        if (playPromise !== undefined) {
-          playPromise.then(() => {
-            console.log('🎵 Audio playback promise resolved successfully!');
-          }).catch(error => {
-            console.error('Error starting audio playback:', error);
+        const startPlayback = async () => {
+          try {
+            console.log('🎵 Attempting to start audio playback...');
+            await audio.play();
+            console.log('🎵 ✅ Audio playback started successfully!');
+          } catch (error) {
+            console.error('🎵 ❌ Error starting audio playback:', error);
             if (error.name === 'NotAllowedError') {
-              console.error('Audio autoplay blocked - user interaction required');
-              reject(new Error('Audio autoplay blocked. Please interact with the page first.'));
+              console.error('🎵 Audio autoplay blocked - user interaction required');
+              
+              // Add visual indicator for user to click
+              const playButton = document.createElement('button');
+              playButton.innerHTML = '🔊 Click to play audio';
+              playButton.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 9999;
+                padding: 10px 20px;
+                background: #007bff;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+              `;
+              
+              playButton.onclick = async () => {
+                try {
+                  await audio.play();
+                  document.body.removeChild(playButton);
+                  console.log('🎵 ✅ Audio started after user interaction');
+                } catch (retryError) {
+                  console.error('🎵 ❌ Still failed after user interaction:', retryError);
+                }
+              };
+              
+              document.body.appendChild(playButton);
+              
+              reject(new Error('Audio autoplay blocked. Click the play button to enable audio.'));
             } else {
               this.isPlaying = false;
               this.currentAudio = null;
@@ -74,8 +110,10 @@ export class AudioPlayer {
               URL.revokeObjectURL(audioUrl);
               reject(error);
             }
-          });
-        }
+          }
+        };
+        
+        startPlayback();
         
       } catch (error) {
         console.error('Error processing audio:', error);
