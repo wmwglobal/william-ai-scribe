@@ -62,6 +62,14 @@ export class AudioPlayer {
           console.log('🎵 Audio can play through - buffer ready');
         };
         
+        audio.onloadstart = () => {
+          console.log('🎵 Audio load started');
+        };
+        
+        audio.oncanplay = () => {
+          console.log('🎵 Audio can start playing');
+        };
+        
         // Start playback with user interaction check
         const startPlayback = async () => {
           try {
@@ -555,26 +563,12 @@ export class AudioRecorder {
     
     // Stop any active recording segment
     this.stopRecordingSegment();
-    
-    // Mute the audio stream if available
-    if (this.stream) {
-      this.stream.getAudioTracks().forEach(track => {
-        track.enabled = false;
-      });
-    }
   }
 
-  // Resume listening after AI finishes speaking
+  // Resume listening after AI finishes speaking  
   resumeListening(): void {
     console.log('🎤 RESUME: Re-enabling microphone after AI finished speaking');
     this.isPaused = false;
-    
-    // Unmute the audio stream if available
-    if (this.stream) {
-      this.stream.getAudioTracks().forEach(track => {
-        track.enabled = true;
-      });
-    }
   }
 }
 

@@ -35,6 +35,7 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
     
     // Initialize audio player and recorder
     audioPlayerRef.current = new AudioPlayer((playing) => {
+      console.log('🎵 AudioPlayer playing state changed:', playing);
       if (isMountedRef.current) {
         setIsSpeaking(playing);
         
@@ -267,6 +268,11 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
       return;
     }
 
+    console.log('🤖 ===== SENDING TO AGENT =====');
+    console.log('🤖 User message:', userMessage);
+    console.log('🤖 Session ID:', sessionId);
+    console.log('🤖 Audio enabled:', audioEnabled);
+
     try {
       // Show typing indicator immediately
       if (isMountedRef.current) setIsTyping(true);
@@ -286,9 +292,21 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
         }
       });
 
+      console.log('🤖 Agent response received:', {
+        hasError: !!response.error,
+        hasData: !!response.data,
+        dataKeys: response.data ? Object.keys(response.data) : []
+      });
+
       if (response.error) throw response.error;
 
       const agentResponse = response.data as AgentReplyResponse;
+      
+      console.log('🤖 Agent response details:', {
+        text: agentResponse.text?.substring(0, 100) + '...',
+        hasAudio: !!agentResponse.audio_base64,
+        audioLength: agentResponse.audio_base64?.length || 0
+      });
       
       // Clean debug commands from display text
       let displayText = agentResponse.text;
