@@ -11,3 +11,12 @@ verify_jwt = true
 
 [functions.agent_reply]
 verify_jwt = false
+
+[functions.recall_memories]
+verify_jwt = false
+
+[functions.save_memory]
+verify_jwt = false
+
+[functions.summarize_session]
+verify_jwt = false
