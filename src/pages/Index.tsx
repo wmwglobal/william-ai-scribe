@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MessageCircle, Users, TrendingUp, Shield, Mic, Brain, Zap, Sparkles, History, Target, Calendar, FileText, CheckSquare, Lightbulb, ArrowRight, Mail } from 'lucide-react';
+import { MessageCircle, Users, TrendingUp, Shield, Mic, Brain, Zap, Sparkles, History, Target, Calendar, FileText, CheckSquare, Lightbulb, ArrowRight, Mail, Heart, Home } from 'lucide-react';
 
 const Index = () => {
   return (
@@ -218,33 +218,65 @@ const Index = () => {
               Want Your Own AI Agent?
             </h2>
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Imagine having an AI version of yourself or your team that can handle conversations, 
-              capture insights, and represent your expertise 24/7. Perfect for consultants, coaches, 
-              executives, and thought leaders.
+              Imagine having an AI version of yourself that can handle conversations, manage your family's schedule, 
+              coordinate activities, and represent your expertise 24/7. Perfect for busy professionals, families, 
+              consultants, coaches, and thought leaders who want to stay connected even when they're not available.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
             <div className="text-center">
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                 <Users className="w-8 h-8 text-primary" />
               </div>
               <h3 className="text-lg font-semibold mb-2">Your Personality</h3>
-              <p className="text-muted-foreground">Trained on your content, speaking style, and expertise</p>
+              <p className="text-muted-foreground text-sm">Trained on your content, speaking style, and expertise</p>
+            </div>
+            <div className="text-center">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <Heart className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Family Support</h3>
+              <p className="text-muted-foreground text-sm">Help your family when you're traveling or in meetings</p>
+            </div>
+            <div className="text-center">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <Calendar className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Schedule Management</h3>
+              <p className="text-muted-foreground text-sm">Coordinate family calendars, appointments, and activities</p>
             </div>
             <div className="text-center">
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                 <Zap className="w-8 h-8 text-primary" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">24/7 Availability</h3>
-              <p className="text-muted-foreground">Handle inquiries and conversations when you're not available</p>
+              <h3 className="text-lg font-semibold mb-2">Always Available</h3>
+              <p className="text-muted-foreground text-sm">24/7 support for work inquiries and family needs</p>
             </div>
-            <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                <TrendingUp className="w-8 h-8 text-primary" />
+          </div>
+
+          <div className="bg-muted/30 rounded-xl p-8 mb-12">
+            <h3 className="text-xl font-semibold mb-4 flex items-center justify-center">
+              <Home className="w-5 h-5 mr-2" />
+              Perfect for Modern Families
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left max-w-3xl mx-auto">
+              <div>
+                <h4 className="font-semibold mb-2">For Parents:</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• Answer kids' questions when you're at work</li>
+                  <li>• Coordinate school schedules and activities</li>
+                  <li>• Share your wisdom and guidance 24/7</li>
+                </ul>
               </div>
-              <h3 className="text-lg font-semibold mb-2">Scale Your Impact</h3>
-              <p className="text-muted-foreground">Reach more people while maintaining your personal touch</p>
+              <div>
+                <h4 className="font-semibold mb-2">For Professionals:</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• Handle client inquiries during family time</li>
+                  <li>• Scale your expertise without working more</li>
+                  <li>• Maintain work-life balance with AI support</li>
+                </ul>
+              </div>
             </div>
           </div>
 
