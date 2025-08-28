@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MessageCircle, Users, TrendingUp, Shield, Mic, Brain, Zap, Sparkles, History, Target } from 'lucide-react';
+import { MessageCircle, Users, TrendingUp, Shield, Mic, Brain, Zap, Sparkles, History, Target, Calendar, FileText, CheckSquare, Lightbulb, ArrowRight, Mail } from 'lucide-react';
 
 const Index = () => {
   return (
@@ -122,6 +122,42 @@ const Index = () => {
             <Card className="shadow-card">
               <CardContent className="p-6">
                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <FileText className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Smart Summaries</h3>
+                <p className="text-muted-foreground">
+                  Automatically generates comprehensive summaries of your conversations, capturing key insights, decisions, and next steps.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-card">
+              <CardContent className="p-6">
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <CheckSquare className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Action Items</h3>
+                <p className="text-muted-foreground">
+                  Identifies and tracks actionable tasks from conversations, with priority scoring and follow-up reminders.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-card">
+              <CardContent className="p-6">
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <Calendar className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Calendar Integration</h3>
+                <p className="text-muted-foreground">
+                  Seamlessly schedules meetings, sets reminders, and manages your calendar based on conversation context.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-card">
+              <CardContent className="p-6">
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                   <Target className="w-6 h-6 text-primary" />
                 </div>
                 <h3 className="text-xl font-semibold mb-2">Curiosity Triggers</h3>
@@ -166,6 +202,81 @@ const Index = () => {
                 </p>
               </CardContent>
             </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Upsell Section */}
+      <section className="py-20 bg-gradient-subtle">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="mb-12">
+            <Badge variant="secondary" className="mb-6">
+              <Lightbulb className="w-4 h-4 mr-2" />
+              Custom AI Agents
+            </Badge>
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">
+              Want Your Own AI Agent?
+            </h2>
+            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+              Imagine having an AI version of yourself or your team that can handle conversations, 
+              capture insights, and represent your expertise 24/7. Perfect for consultants, coaches, 
+              executives, and thought leaders.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+            <div className="text-center">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <Users className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Your Personality</h3>
+              <p className="text-muted-foreground">Trained on your content, speaking style, and expertise</p>
+            </div>
+            <div className="text-center">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <Zap className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">24/7 Availability</h3>
+              <p className="text-muted-foreground">Handle inquiries and conversations when you're not available</p>
+            </div>
+            <div className="text-center">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <TrendingUp className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Scale Your Impact</h3>
+              <p className="text-muted-foreground">Reach more people while maintaining your personal touch</p>
+            </div>
+          </div>
+
+          <Card className="max-w-md mx-auto shadow-elegant">
+            <CardContent className="p-8">
+              <h3 className="text-2xl font-bold mb-4">Request Early Access</h3>
+              <p className="text-muted-foreground mb-6">
+                Join the waitlist for custom AI agents. We'll contact you with more details.
+              </p>
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    placeholder="Enter your email address"
+                    className="flex-1 px-4 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                  <Button className="shadow-glow">
+                    <Mail className="w-4 h-4 mr-2" />
+                    Join Waitlist
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  No spam, just updates on availability and pricing.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="mt-8">
+            <Link to="/chat" className="inline-flex items-center text-primary hover:text-primary/80 transition-colors">
+              Try AI William first <ArrowRight className="w-4 h-4 ml-1" />
+            </Link>
           </div>
         </div>
       </section>
