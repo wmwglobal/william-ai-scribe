@@ -219,8 +219,8 @@ const Index = () => {
             </h2>
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
               Imagine having an AI version of yourself that can handle conversations, manage your family's schedule, 
-              coordinate activities, and represent your expertise 24/7. Perfect for busy professionals, families, 
-              consultants, coaches, and thought leaders who want to stay connected even when they're not available.
+              coordinate activities, and be there when you can't be. Perfect for busy professionals, parents, 
+              consultants, and anyone who wants to help more people while maintaining balance.
             </p>
           </div>
 
