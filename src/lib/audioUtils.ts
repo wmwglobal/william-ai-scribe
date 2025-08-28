@@ -227,12 +227,12 @@ export class AudioRecorder {
     const bufferLength = this.analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
 
-    // Hysteresis + hangover endpointing - made more responsive
-    const START_THRESH = this.volumeThreshold;   // trigger threshold to start
-    const STOP_THRESH = this.volumeThreshold * 0.3; // lower threshold to keep speaking until clearly silent
-    const SILENCE_WINDOW_MS = 500;              // reduced from 700ms - how long below STOP to end utterance
-    const HANGOVER_MS = 100;                    // reduced from 180ms - keep "speaking" true briefly after drop
-    const MIN_SPEECH_MS = 1000;                 // reduced from 2000ms - minimum duration
+    // Hysteresis + hangover endpointing - adjusted for real-world noise levels
+    const START_THRESH = Math.max(0.15, this.volumeThreshold * 15);   // Higher threshold to ignore ambient noise
+    const STOP_THRESH = Math.max(0.08, this.volumeThreshold * 8);     // Higher stop threshold 
+    const SILENCE_WINDOW_MS = 1000;              // Increased - wait longer for true silence
+    const HANGOVER_MS = 200;                     // Keep "speaking" true briefly after drop
+    const MIN_SPEECH_MS = 1500;                  // Minimum duration for valid speech
     let speaking = false;
     let speechStartAt = 0;
     let lastAboveStopAt = 0;
