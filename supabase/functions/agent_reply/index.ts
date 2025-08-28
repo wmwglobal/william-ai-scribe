@@ -438,10 +438,19 @@ serve(async (req) => {
     const realIp = req.headers.get('x-real-ip');
     const clientId = forwarded || realIp || 'unknown';
     
-    // Check origin/referer (enforce allowlist for security)
+    // Check origin/referer (enforce allowlist for enhanced security in production)
     const isValidOrigin = origin && ALLOWED_ORIGINS.includes(origin);
     const isValidReferer = referer && ALLOWED_ORIGINS.some(allowed => referer.startsWith(allowed));
     
+    // Log for debugging
+    console.log('CORS Debug:', {
+      origin: origin,
+      referer: referer,
+      isValidOrigin: isValidOrigin,
+      isValidReferer: isValidReferer
+    });
+    
+    // Allow if either origin OR referer is valid
     if (!isValidOrigin && !isValidReferer) {
       console.warn('Blocked request from unauthorized origin:', origin, 'referer:', referer, 'client:', clientId);
       return new Response('Forbidden: Invalid origin', { 
