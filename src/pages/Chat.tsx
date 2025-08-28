@@ -174,7 +174,7 @@ export default function Chat() {
                 <img 
                   src="/lovable-uploads/4e4a0df0-6324-48a2-8c35-0b8ae7db33bc.png" 
                   alt="AI William" 
-                  className="w-32 h-32 rounded-xl object-cover border-4 border-primary/20 shadow-xl"
+                  className="w-32 h-32 rounded-full object-cover border-4 border-primary/20 shadow-xl"
                   style={{ objectPosition: '50% 35%' }}
                 />
                 <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 rounded-full border-2 border-background animate-pulse" />
@@ -262,7 +262,7 @@ export default function Chat() {
               <img 
                 src={getSessionAvatar(sessionId || '')} 
                 alt="AI William" 
-                className="w-12 h-12 rounded-lg object-cover border-2 border-primary/20 shadow-lg"
+                className="w-12 h-12 rounded-full object-cover border-2 border-primary/20 shadow-lg"
               />
               <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-background animate-pulse" />
             </div>
@@ -324,7 +324,7 @@ export default function Chat() {
                         <img 
                           src={getSessionAvatar(sessionId || '')} 
                           alt="AI William" 
-                          className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border-2 border-primary/10 shadow-md"
+                          className="w-10 h-10 rounded-full object-cover flex-shrink-0 border-2 border-primary/10 shadow-md"
                         />
                         <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full border border-background" />
                       </div>
@@ -355,7 +355,7 @@ export default function Chat() {
                       <img 
                         src={getSessionAvatar(sessionId || '')} 
                         alt="AI William" 
-                        className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border-2 border-primary/10 shadow-md"
+                        className="w-10 h-10 rounded-full object-cover flex-shrink-0 border-2 border-primary/10 shadow-md"
                       />
                       <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-blue-500 rounded-full border border-background animate-pulse" />
                     </div>
