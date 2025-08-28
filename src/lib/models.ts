@@ -165,5 +165,5 @@ export const getDefaultModel = (): GroqModel => {
 };
 
 export const getDefaultPersonality = (): Personality => {
-  return WILLIAM_PERSONALITIES[2]; // Mentor by default - more conversational
+  return WILLIAM_PERSONALITIES[0]; // Entrepreneur by default - strategic business focus
 };
