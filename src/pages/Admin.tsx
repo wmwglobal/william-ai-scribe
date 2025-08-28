@@ -7,62 +7,35 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar, Filter, Download, Play, Settings, Users, TrendingUp, Clock } from 'lucide-react';
-
-// Mock data for demonstration
-const mockSessions = [
-  {
-    id: '1',
-    started_at: '2024-01-15T10:30:00Z',
-    ended_at: '2024-01-15T10:45:00Z',
-    visitor_id: 'visitor_123',
-    intent: 'consulting_inquiry',
-    lead_score: 85,
-    email: 'john@acme.com',
-    contact_name: 'John Smith',
-    cta_chosen: 'book_call',
-    duration: '15m'
-  },
-  {
-    id: '2',
-    started_at: '2024-01-15T14:20:00Z',
-    ended_at: '2024-01-15T14:35:00Z',
-    visitor_id: 'visitor_456',
-    intent: 'partnership_vendor',
-    lead_score: 65,
-    email: null,
-    contact_name: null,
-    cta_chosen: 'share_deck',
-    duration: '15m'
-  },
-  {
-    id: '3',
-    started_at: '2024-01-14T16:45:00Z',
-    ended_at: '2024-01-14T17:00:00Z',
-    visitor_id: 'visitor_789',
-    intent: 'advice_request',
-    lead_score: 25,
-    email: null,
-    contact_name: null,
-    cta_chosen: null,
-    duration: '15m'
-  }
-];
+import { Calendar, Filter, Download, Eye, Settings, Users, TrendingUp, Clock, FileText, AlertCircle } from 'lucide-react';
+import { useAdminSessions, useAdminStats, SessionWithSummary } from '@/hooks/useAdminData';
+import { SessionDetailModal } from '@/components/SessionDetailModal';
+import { getScoreBadgeVariant } from '@/lib/leadScore';
 
 const Admin = () => {
   const [dateRange, setDateRange] = useState('7d');
   const [intentFilter, setIntentFilter] = useState('all');
-  const [selectedSession, setSelectedSession] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedSession, setSelectedSession] = useState<SessionWithSummary | null>(null);
+  
+  const { sessions, loading: sessionsLoading, error: sessionsError } = useAdminSessions(dateRange, intentFilter);
+  const { stats, loading: statsLoading } = useAdminStats(dateRange);
 
-  const getIntentBadgeVariant = (intent: string) => {
+  // Filter sessions based on search term
+  const filteredSessions = sessions.filter(session => {
+    if (!searchTerm) return true;
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      session.contact_name?.toLowerCase().includes(searchLower) ||
+      session.email?.toLowerCase().includes(searchLower) ||
+      session.visitor_id?.toLowerCase().includes(searchLower)
+    );
+  });
+
+  const getIntentBadgeVariant = (intent: string | null) => {
+    if (!intent) return 'outline';
     const highValue = ['consulting_inquiry', 'partnership_vendor', 'speaking_request'];
     return highValue.includes(intent) ? 'default' : 'secondary';
-  };
-
-  const getScoreBadgeVariant = (score: number) => {
-    if (score >= 70) return 'default';
-    if (score >= 40) return 'secondary';
-    return 'outline';
   };
 
   return (
@@ -108,8 +81,12 @@ const Admin = () => {
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">24</div>
-                  <p className="text-xs text-muted-foreground">+12% from last week</p>
+                  <div className="text-2xl font-bold">
+                    {statsLoading ? '...' : stats.totalSessions}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {dateRange === '7d' ? 'Last 7 days' : `Last ${dateRange.replace('d', ' days')}`}
+                  </p>
                 </CardContent>
               </Card>
               
@@ -119,7 +96,9 @@ const Admin = () => {
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">8</div>
+                  <div className="text-2xl font-bold">
+                    {statsLoading ? '...' : stats.highQualityLeads}
+                  </div>
                   <p className="text-xs text-muted-foreground">Score ≥70</p>
                 </CardContent>
               </Card>
@@ -130,8 +109,10 @@ const Admin = () => {
                   <Clock className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">12m</div>
-                  <p className="text-xs text-muted-foreground">+2m from last week</p>
+                  <div className="text-2xl font-bold">
+                    {statsLoading ? '...' : stats.avgSessionTime}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Average duration</p>
                 </CardContent>
               </Card>
               
@@ -141,7 +122,9 @@ const Admin = () => {
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">33%</div>
+                  <div className="text-2xl font-bold">
+                    {statsLoading ? '...' : stats.conversionRate}
+                  </div>
                   <p className="text-xs text-muted-foreground">CTAs clicked</p>
                 </CardContent>
               </Card>
@@ -153,32 +136,59 @@ const Admin = () => {
                 <CardTitle>Recent High-Value Sessions</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {mockSessions.filter(s => s.lead_score >= 60).map((session) => (
-                    <div key={session.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="w-2 h-2 bg-primary rounded-full"></div>
-                        <div>
-                          <p className="font-medium">{session.contact_name || 'Anonymous'}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date(session.started_at).toLocaleDateString()} • {session.duration}
-                          </p>
+                {sessionsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : sessionsError ? (
+                  <div className="flex items-center justify-center py-8 text-destructive">
+                    <AlertCircle className="w-5 h-5 mr-2" />
+                    Error loading sessions: {sessionsError}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {sessions.filter(s => (s.lead_score || 0) >= 60).map((session) => (
+                      <div key={session.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-2 h-2 bg-primary rounded-full"></div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">{session.contact_name || 'Anonymous'}</p>
+                               {session.summary && (
+                                 <FileText className="w-3 h-3 text-primary" />
+                               )}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(session.started_at).toLocaleDateString()} • {session.duration}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {session.final_intent && (
+                            <Badge variant={getIntentBadgeVariant(session.final_intent)}>
+                              {session.final_intent.replace('_', ' ')}
+                            </Badge>
+                          )}
+                          <Badge variant={getScoreBadgeVariant(session.lead_score || 0)}>
+                            {session.lead_score || 0}
+                          </Badge>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => setSelectedSession(session)}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={getIntentBadgeVariant(session.intent)}>
-                          {session.intent.replace('_', ' ')}
-                        </Badge>
-                        <Badge variant={getScoreBadgeVariant(session.lead_score)}>
-                          {session.lead_score}
-                        </Badge>
-                        <Button variant="ghost" size="sm">
-                          <Play className="w-4 h-4" />
-                        </Button>
+                    ))}
+                    {sessions.filter(s => (s.lead_score || 0) >= 60).length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        No high-value sessions found
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -219,7 +229,12 @@ const Admin = () => {
                     </Select>
                   </div>
                   
-                  <Input placeholder="Search by email or name..." className="max-w-sm" />
+                  <Input 
+                    placeholder="Search by email or name..." 
+                    className="max-w-sm"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -230,59 +245,97 @@ const Admin = () => {
                 <CardTitle>All Sessions</CardTitle>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Contact</TableHead>
-                      <TableHead>Intent</TableHead>
-                      <TableHead>Score</TableHead>
-                      <TableHead>CTA</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {mockSessions.map((session) => (
-                      <TableRow key={session.id}>
-                        <TableCell>
-                          {new Date(session.started_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{session.contact_name || 'Anonymous'}</p>
-                            {session.email && (
-                              <p className="text-sm text-muted-foreground">{session.email}</p>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={getIntentBadgeVariant(session.intent)}>
-                            {session.intent.replace('_', ' ')}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={getScoreBadgeVariant(session.lead_score)}>
-                            {session.lead_score}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {session.cta_chosen ? (
-                            <Badge variant="outline">{session.cta_chosen.replace('_', ' ')}</Badge>
-                          ) : (
-                            <span className="text-muted-foreground">None</span>
-                          )}
-                        </TableCell>
-                        <TableCell>{session.duration}</TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="sm">
-                            <Play className="w-4 h-4" />
-                          </Button>
-                        </TableCell>
+                {sessionsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : sessionsError ? (
+                  <div className="flex items-center justify-center py-8 text-destructive">
+                    <AlertCircle className="w-5 h-5 mr-2" />
+                    Error loading sessions: {sessionsError}
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Contact</TableHead>
+                        <TableHead>Intent</TableHead>
+                        <TableHead>Score</TableHead>
+                        <TableHead>CTA</TableHead>
+                        <TableHead>Duration</TableHead>
+                        <TableHead>Summary</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredSessions.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                            No sessions found
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredSessions.map((session) => (
+                          <TableRow key={session.id} className="hover:bg-muted/50">
+                            <TableCell>
+                              {new Date(session.started_at).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{session.contact_name || 'Anonymous'}</p>
+                                {session.email && (
+                                  <p className="text-sm text-muted-foreground">{session.email}</p>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {session.final_intent ? (
+                                <Badge variant={getIntentBadgeVariant(session.final_intent)}>
+                                  {session.final_intent.replace('_', ' ')}
+                                </Badge>
+                              ) : (
+                                <span className="text-muted-foreground">Unknown</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={getScoreBadgeVariant(session.lead_score || 0)}>
+                                {session.lead_score || 0}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {session.cta_chosen ? (
+                                <Badge variant="outline">{session.cta_chosen.replace('_', ' ')}</Badge>
+                              ) : (
+                                <span className="text-muted-foreground">None</span>
+                              )}
+                            </TableCell>
+                            <TableCell>{session.duration}</TableCell>
+                            <TableCell>
+                              {session.summary ? (
+                                <Badge variant="default" className="flex items-center gap-1">
+                                  <FileText className="w-3 h-3" />
+                                  Yes
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline">No</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => setSelectedSession(session)}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -314,6 +367,13 @@ const Admin = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Session Detail Modal */}
+      <SessionDetailModal
+        session={selectedSession}
+        isOpen={!!selectedSession}
+        onClose={() => setSelectedSession(null)}
+      />
     </div>
     </AuthGuard>
   );
