@@ -180,6 +180,13 @@ export class AudioRecorder {
 
   async startContinuousListening(): Promise<void> {
     try {
+      // Clean up any existing resources first
+      if (this.stream) {
+        console.log('🎤 Cleaning up existing stream before starting new one');
+        this.stopContinuousListening();
+        await new Promise(resolve => setTimeout(resolve, 100)); // Brief delay for cleanup
+      }
+
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           sampleRate: 44100,
@@ -190,22 +197,52 @@ export class AudioRecorder {
         }
       });
 
+      // Check stream health
+      const tracks = this.stream.getAudioTracks();
+      if (tracks.length === 0) {
+        throw new Error('No audio tracks available');
+      }
+      
+      const audioTrack = tracks[0];
+      console.log('🎤 Audio track state:', {
+        enabled: audioTrack.enabled,
+        readyState: audioTrack.readyState,
+        muted: audioTrack.muted,
+        constraints: audioTrack.getSettings()
+      });
+
       // Set up audio context for voice activity detection
       this.audioContext = new AudioContext();
+      
+      // Resume audio context if suspended (common after inactivity)
+      if (this.audioContext.state === 'suspended') {
+        console.log('🎤 AudioContext suspended, resuming...');
+        await this.audioContext.resume();
+      }
+      
+      console.log('🎤 AudioContext state:', this.audioContext.state);
+      
       this.source = this.audioContext.createMediaStreamSource(this.stream);
       this.analyser = this.audioContext.createAnalyser();
       this.analyser.fftSize = 256;
       this.source.connect(this.analyser);
 
+      // Reset all state flags
       this.isContinuousMode = true;
+      this.isPaused = false;
+      this.isProcessingTranscription = false;
+      this.lastTranscript = '';
+      this.lastTranscriptChangeTime = 0;
+      this.volumeHistory = [];
+      
       this.onRecordingChange?.(true);
       
       // Start voice activity detection
       this.startVoiceActivityDetection();
       
-      console.log('Continuous listening started');
+      console.log('🎤 ✅ Continuous listening started successfully');
     } catch (error) {
-      console.error('Error starting continuous listening:', error);
+      console.error('🎤 ❌ Error starting continuous listening:', error);
       throw new Error('Failed to start continuous listening. Please check microphone permissions.');
     }
   }
@@ -238,8 +275,13 @@ export class AudioRecorder {
     let lastAboveStopAt = 0;
     let lastLogTime = 0;
 
+    console.log('🎤 VAD Started with thresholds:', { START_THRESH, STOP_THRESH, MIN_SPEECH_MS });
+
     const checkVoiceActivity = () => {
-      if (!this.analyser || !this.isContinuousMode) return;
+      if (!this.analyser || !this.isContinuousMode) {
+        console.log('🎤 VAD Check skipped - analyser or continuous mode missing');
+        return;
+      }
 
       this.analyser.getByteFrequencyData(dataArray);
 
@@ -253,31 +295,37 @@ export class AudioRecorder {
       const aboveStart = smoothed > START_THRESH;
       const aboveStop  = smoothed > STOP_THRESH;
 
-      // Debug logging every second
-      if (smoothed > 0.001 && now - lastLogTime > 1000) {
-        console.log('🎤 VAD Debug:', {
+      // Debug logging every 2 seconds with more detail
+      if (smoothed > 0.001 && now - lastLogTime > 2000) {
+        console.log('🎤 VAD State:', {
           smoothed: smoothed.toFixed(4),
           startThresh: START_THRESH.toFixed(4),
           stopThresh: STOP_THRESH.toFixed(4),
           aboveStart,
           aboveStop,
           speaking,
-          isRecording: this.isRecording
+          isRecording: this.isRecording,
+          isPaused: this.isPaused,
+          isContinuous: this.isContinuousMode,
+          hasStream: !!this.stream
         });
         lastLogTime = now;
       }
 
       if (!speaking) {
-        if (aboveStart && !this.isPaused) { // Don't start recording if paused
+        if (aboveStart && !this.isPaused && this.isContinuousMode) { // Add continuous mode check
           // start of speech, begin recording a segment
-          console.log('🎤 ✅ SPEECH START - volume:', smoothed.toFixed(4));
+          console.log('🎤 ✅ SPEECH START - volume:', smoothed.toFixed(4), 'threshold:', START_THRESH.toFixed(4));
           speaking = true;
           speechStartAt = now;
           lastAboveStopAt = now;
-          if (!this.isRecording && this.isContinuousMode) {
+          if (!this.isRecording) {
+            console.log('🎤 🚀 Starting recording segment...');
             this.startRecordingSegment();
             this.startTranscriptBasedDetection();
             this.onSpeechActivity?.(true);
+          } else {
+            console.log('🎤 ⚠️ Already recording, not starting new segment');
           }
         }
       } else {
@@ -569,6 +617,13 @@ export class AudioRecorder {
   resumeListening(): void {
     console.log('🎤 RESUME: Re-enabling microphone after AI finished speaking');
     this.isPaused = false;
+    
+    // Reset any stuck states when resuming
+    this.isProcessingTranscription = false;
+    this.lastTranscript = '';
+    this.lastTranscriptChangeTime = 0;
+    
+    console.log('🎤 RESUME: Reset transcription state, ready for next speech');
   }
 }
 
