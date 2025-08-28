@@ -1,5 +1,8 @@
 project_id = "suyervjawrmbyyxetblv"
 
+[functions.collect_email]
+verify_jwt = false
+
 [functions.speech_to_text_groq]
 verify_jwt = false
 

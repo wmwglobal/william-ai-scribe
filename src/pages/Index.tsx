@@ -2,9 +2,71 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MessageCircle, Users, TrendingUp, Shield, Mic, Brain, Zap, Sparkles, History, Target, Calendar, FileText, CheckSquare, Lightbulb, ArrowRight, Mail, Heart, Home } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { MessageCircle, Users, TrendingUp, Shield, Mic, Brain, Zap, Sparkles, History, Target, Calendar, FileText, CheckSquare, Lightbulb, ArrowRight, Mail, Heart, Home, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const { toast } = useToast();
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email.trim()) {
+      toast({
+        title: "Email required",
+        description: "Please enter your email address to join the waitlist.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('collect_email', {
+        body: {
+          email: email.trim(),
+          name: name.trim() || undefined,
+          signup_type: 'waitlist'
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      const response = data;
+      
+      if (response.success) {
+        setIsSuccess(true);
+        setEmail('');
+        setName('');
+        
+        toast({
+          title: "Welcome to the waitlist!",
+          description: response.message,
+        });
+      } else {
+        throw new Error(response.error || 'Failed to join waitlist');
+      }
+    } catch (error) {
+      console.error('Signup error:', error);
+      toast({
+        title: "Signup failed",
+        description: error instanceof Error ? error.message : "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
   return (
     <div className="min-h-screen bg-gradient-hero">
       {/* Header */}
@@ -286,22 +348,50 @@ const Index = () => {
               <p className="text-muted-foreground mb-6">
                 Join the waitlist for custom AI agents. We'll contact you with more details.
               </p>
-              <div className="space-y-4">
-                <div className="flex gap-2">
-                  <input
+              <form onSubmit={handleSignup} className="space-y-4">
+                <div className="space-y-3">
+                  <Input
+                    type="text"
+                    placeholder="Your name (optional)"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    disabled={isLoading}
+                  />
+                  <Input
                     type="email"
                     placeholder="Enter your email address"
-                    className="flex-1 px-4 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={isLoading}
+                    required
                   />
-                  <Button className="shadow-glow">
-                    <Mail className="w-4 h-4 mr-2" />
-                    Join Waitlist
-                  </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <Button 
+                  type="submit" 
+                  className="w-full shadow-glow" 
+                  disabled={isLoading || isSuccess}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Joining...
+                    </>
+                  ) : isSuccess ? (
+                    <>
+                      <CheckSquare className="w-4 h-4 mr-2" />
+                      Added to Waitlist!
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="w-4 h-4 mr-2" />
+                      Join Waitlist
+                    </>
+                  )}
+                </Button>
+                <p className="text-xs text-muted-foreground text-center">
                   No spam, just updates on availability and pricing.
                 </p>
-              </div>
+              </form>
             </CardContent>
           </Card>
 
