@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      challenges: {
+        Row: {
+          challenged_id: string
+          challenged_score: number | null
+          challenger_id: string
+          challenger_score: number | null
+          completed_at: string | null
+          created_at: string
+          expires_at: string
+          game_type: string
+          id: string
+          status: string
+        }
+        Insert: {
+          challenged_id: string
+          challenged_score?: number | null
+          challenger_id: string
+          challenger_score?: number | null
+          completed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          game_type: string
+          id?: string
+          status?: string
+        }
+        Update: {
+          challenged_id?: string
+          challenged_score?: number | null
+          challenger_id?: string
+          challenger_score?: number | null
+          completed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          game_type?: string
+          id?: string
+          status?: string
+        }
+        Relationships: []
+      }
       events: {
         Row: {
           id: string
@@ -118,6 +157,90 @@ export type Database = {
           },
         ]
       }
+      friends: {
+        Row: {
+          created_at: string
+          friend_id: string
+          id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          friend_id: string
+          id?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          friend_id?: string
+          id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      game_scores: {
+        Row: {
+          created_at: string
+          game_type: string
+          id: string
+          score: number
+          stars: number
+          time_taken: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          game_type: string
+          id?: string
+          score: number
+          stars?: number
+          time_taken: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          game_type?: string
+          id?: string
+          score?: number
+          stars?: number
+          time_taken?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      leaderboards: {
+        Row: {
+          best_score: number
+          game_type: string
+          id: string
+          total_games: number
+          total_stars: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          best_score: number
+          game_type: string
+          id?: string
+          total_games?: number
+          total_stars?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          best_score?: number
+          game_type?: string
+          id?: string
+          total_games?: number
+          total_stars?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       memories: {
         Row: {
           content: Json
@@ -176,25 +299,37 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_items: string[] | null
           created_at: string | null
+          current_avatar: Json | null
           display_name: string | null
           id: string
+          points_spent: number | null
           role: string | null
           updated_at: string | null
+          username: string | null
         }
         Insert: {
+          avatar_items?: string[] | null
           created_at?: string | null
+          current_avatar?: Json | null
           display_name?: string | null
           id: string
+          points_spent?: number | null
           role?: string | null
           updated_at?: string | null
+          username?: string | null
         }
         Update: {
+          avatar_items?: string[] | null
           created_at?: string | null
+          current_avatar?: Json | null
           display_name?: string | null
           id?: string
+          points_spent?: number | null
           role?: string | null
           updated_at?: string | null
+          username?: string | null
         }
         Relationships: []
       }
@@ -545,6 +680,15 @@ export type Database = {
       sparsevec_typmod_in: {
         Args: { "": unknown[] }
         Returns: number
+      }
+      update_leaderboard: {
+        Args: {
+          p_game_type: string
+          p_score: number
+          p_stars: number
+          p_user_id: string
+        }
+        Returns: undefined
       }
       validate_session_access: {
         Args: { session_id_param: string; session_secret_param: string }
