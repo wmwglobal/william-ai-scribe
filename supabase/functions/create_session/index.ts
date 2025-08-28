@@ -9,7 +9,8 @@ const ALLOWED_ORIGINS = [
   'http://localhost:5173', 
   'https://suyervjawrmbyyxetblv.supabase.co',
   'https://2e10a6c0-0b90-4a50-8d27-471a5969124f.sandbox.lovable.dev',
-  'https://id-preview--2e10a6c0-0b90-4a50-8d27-471a5969124f.lovable.app'
+  'https://id-preview--2e10a6c0-0b90-4a50-8d27-471a5969124f.lovable.app',
+  'https://williammwhite.com'
 ];
 
 // Rate limiting map for basic protection
