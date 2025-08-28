@@ -170,11 +170,12 @@ export default function Chat() {
         <Card className="w-full max-w-md bg-background/80 backdrop-blur-sm">
           <CardContent className="p-6 space-y-6">
             <div className="text-center space-y-4">
-              <div className="relative mx-auto w-32 h-32">
+              <div className="relative mx-auto w-32 h-32 -mt-2">
                 <img 
                   src="/lovable-uploads/4e4a0df0-6324-48a2-8c35-0b8ae7db33bc.png" 
                   alt="AI William" 
                   className="w-32 h-32 rounded-full object-cover border-4 border-primary/20 shadow-xl"
+                  style={{ objectPosition: '50% 35%' }}
                 />
                 <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 rounded-full border-2 border-background animate-pulse" />
               </div>
