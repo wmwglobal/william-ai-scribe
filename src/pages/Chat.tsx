@@ -312,7 +312,19 @@ export default function Chat() {
             <div className="text-center text-muted-foreground py-8">
               <Brain className="w-12 h-12 mx-auto mb-4 opacity-50" />
               <p className="text-lg font-medium mb-2">Ready to chat with AI William</p>
-              <p className="text-sm">Start a conversation by recording audio or typing a message</p>
+              <p className="text-sm mb-4">Start a conversation by recording audio or typing a message</p>
+              
+              {/* Microphone Instructions */}
+              <div className="bg-card/50 rounded-lg p-4 max-w-md mx-auto border">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <Mic className="w-5 h-5 text-primary" />
+                  <span className="font-medium text-foreground">Voice Chat Instructions</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Click the microphone button below to start talking. 
+                  The system will automatically detect when you speak and transcribe your voice.
+                </p>
+              </div>
             </div>
           ) : (
             <>
