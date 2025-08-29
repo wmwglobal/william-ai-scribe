@@ -46,9 +46,9 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
         console.log('🎤 Speech activity changed:', speechActive);
         if (isMountedRef.current) setIsSpeaking(speechActive);
       },
-      (transcript) => {
-        console.log('🎤 📝 Transcript received:', transcript);
-        handleTranscriptReady(transcript);
+      (audioBlob) => {
+        console.log('🎤 📝 Audio blob received, size:', audioBlob.size);
+        handleAudioData(audioBlob);
       }
     );
     audioRecorderRef.current = recorder;
@@ -190,29 +190,6 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
     }
   }
 
-  // Handler for when transcript is ready from the simplified AudioRecorder
-  function handleTranscriptReady(transcriptText: string) {
-    console.log('🎤 📝 Processing transcript:', transcriptText);
-    
-    if (!transcriptText || !transcriptText.trim() || !sessionId || !sessionSecret) {
-      return;
-    }
-
-    // Add user message to transcript
-    const userMessage = transcriptText.trim();
-    const newTranscriptEntry = {
-      speaker: 'visitor' as const,
-      text: userMessage,
-      timestamp: new Date()
-    };
-
-    if (isMountedRef.current) {
-      setTranscript(prev => [...prev, newTranscriptEntry]);
-    }
-
-    // Send to agent
-    sendToAgent(userMessage);
-  }
 
   async function createSession(consent: boolean = false): Promise<string> {
     try {

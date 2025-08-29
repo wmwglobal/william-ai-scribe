@@ -112,12 +112,12 @@ export class AudioRecorder {
   // Callbacks
   private onRecordingStateChange?: (isRecording: boolean) => void;
   private onSpeechActivityChange?: (isSpeaking: boolean) => void;
-  private onTranscriptReady?: (transcript: string) => void;
+  private onTranscriptReady?: (audioBlob: Blob) => void;
 
   constructor(
     onRecordingStateChange?: (isRecording: boolean) => void,
     onSpeechActivityChange?: (isSpeaking: boolean) => void,
-    onTranscriptReady?: (transcript: string) => void
+    onTranscriptReady?: (audioBlob: Blob) => void
   ) {
     this.onRecordingStateChange = onRecordingStateChange;
     this.onSpeechActivityChange = onSpeechActivityChange;
@@ -318,11 +318,9 @@ export class AudioRecorder {
     // Process the captured audio
     if (this.speechBuffer.length > 0) {
       try {
-        const transcript = await this.processAudioBuffer();
-        if (transcript && transcript.trim()) {
-          console.log('🎤 📝 Transcript ready:', transcript);
-          this.onTranscriptReady?.(transcript);
-        }
+        const audioBlob = await this.processAudioBuffer();
+        console.log('🎤 📝 Audio blob ready, size:', audioBlob.size);
+        this.onTranscriptReady?.(audioBlob);
       } catch (error) {
         console.error('🎤 ❌ Error processing audio:', error);
       }
@@ -331,8 +329,10 @@ export class AudioRecorder {
     this.speechBuffer = [];
   }
 
-  private async processAudioBuffer(): Promise<string> {
-    if (!this.speechBuffer.length || !this.audioContext) return '';
+  private async processAudioBuffer(): Promise<Blob> {
+    if (!this.speechBuffer.length || !this.audioContext) {
+      throw new Error('No audio buffer or context');
+    }
 
     // Combine all audio chunks
     const totalLength = this.speechBuffer.reduce((sum, chunk) => sum + chunk.length, 0);
@@ -348,12 +348,7 @@ export class AudioRecorder {
     const wavBuffer = this.floatTo16BitPCM(combinedBuffer);
     const wavBlob = this.createWavBlob(wavBuffer, this.audioContext.sampleRate);
 
-    // Convert to base64 for API call
-    const base64Audio = await this.blobToBase64(wavBlob);
-
-    // Here you would call your transcription API
-    // For now, return a placeholder
-    return await this.callTranscriptionAPI(base64Audio);
+    return wavBlob;
   }
 
   private floatTo16BitPCM(float32Array: Float32Array): ArrayBuffer {
@@ -413,20 +408,8 @@ export class AudioRecorder {
     });
   }
 
-  private async callTranscriptionAPI(base64Audio: string): Promise<string> {
-    // Call the existing speech_to_text_groq function
-    console.log('🎤 📡 Calling transcription API with audio length:', base64Audio.length);
-    
-    try {
-      // You'll need to pass session info - for now return placeholder
-      // This will be updated when we integrate with the session system
-      console.log('🎤 ⚠️ Transcription API not yet integrated with session system');
-      return "Transcript placeholder - session integration needed";
-    } catch (error) {
-      console.error('🎤 ❌ Transcription API error:', error);
-      return '';
-    }
-  }
+  // We need session info for the API call, so we'll remove this method
+  // and let the hook handle the transcription directly
 
   stopContinuousListening(): void {
     console.log('🎤 🛑 Stopping continuous listening...');
