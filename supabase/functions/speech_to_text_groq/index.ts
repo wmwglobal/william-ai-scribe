@@ -145,6 +145,9 @@ serve(async (req) => {
     formData.append('language', 'en');
 
     const groqApiKey = Deno.env.get('GROQ_API_KEY');
+    console.log('GROQ_API_KEY exists:', !!groqApiKey);
+    console.log('GROQ_API_KEY length:', groqApiKey?.length || 0);
+    
     if (!groqApiKey) {
       console.error('GROQ_API_KEY not configured');
       return new Response(
@@ -155,8 +158,17 @@ serve(async (req) => {
 
     console.log('Making request to Groq with model:', model || 'whisper-large-v3-turbo');
     console.log('Audio blob size:', audioBlob.size);
+    console.log('FormData entries:');
+    for (const [key, value] of formData.entries()) {
+      if (key === 'file') {
+        console.log(`  ${key}: [File object, size: ${(value as File).size}]`);
+      } else {
+        console.log(`  ${key}: ${value}`);
+      }
+    }
 
     // Call Groq's OpenAI-compatible audio transcriptions endpoint
+    console.log('About to call Groq API...');
     const groqResponse = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
@@ -165,11 +177,20 @@ serve(async (req) => {
       body: formData,
     });
 
+    console.log('Groq API response status:', groqResponse.status);
+    console.log('Groq API response headers:', Object.fromEntries(groqResponse.headers.entries()));
+
     if (!groqResponse.ok) {
       const errorText = await groqResponse.text();
       console.error('Groq API error:', groqResponse.status, errorText);
+      
+      // Return more specific error information
       return new Response(
-        JSON.stringify({ error: 'Speech recognition failed' }),
+        JSON.stringify({ 
+          error: 'Speech recognition failed',
+          details: `API returned ${groqResponse.status}: ${errorText}`,
+          status: groqResponse.status
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
