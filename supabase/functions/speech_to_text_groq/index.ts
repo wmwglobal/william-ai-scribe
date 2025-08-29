@@ -136,12 +136,12 @@ serve(async (req) => {
     }
     console.log('Binary data created, size:', bytes.length);
 
-    // Create blob and form data - try different audio format
-    const audioBlob = new Blob([bytes], { type: 'audio/wav' });
+    // Create blob and form data - use the correct WebM format that MediaRecorder produces
+    const audioBlob = new Blob([bytes], { type: 'audio/webm;codecs=opus' });
     console.log('Audio blob created, size:', audioBlob.size);
     
     const formData = new FormData();
-    formData.append('file', audioBlob, 'audio.wav');
+    formData.append('file', audioBlob, 'audio.webm');
     formData.append('model', 'whisper-large-v3-turbo');
     formData.append('response_format', 'verbose_json');
     formData.append('language', 'en');
