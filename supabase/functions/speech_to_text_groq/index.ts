@@ -162,13 +162,26 @@ serve(async (req) => {
     console.log('API Key exists:', !!groqApiKey);
     console.log('API Key length:', groqApiKey?.length || 0);
     
-    const groqResponse = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${groqApiKey}`,
-      },
-      body: formData,
-    });
+    let groqResponse;
+    try {
+      groqResponse = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${groqApiKey}`,
+        },
+        body: formData,
+      });
+      console.log('Fetch completed successfully');
+    } catch (fetchError) {
+      console.error('Fetch error:', fetchError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Network error calling Groq API',
+          details: fetchError.message
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     console.log('Groq API response status:', groqResponse.status);
     console.log('Groq API response ok:', groqResponse.ok);
