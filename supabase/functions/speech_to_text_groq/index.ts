@@ -143,8 +143,9 @@ serve(async (req) => {
     const formData = new FormData();
     formData.append('file', audioBlob, 'audio.wav');
     formData.append('model', 'whisper-large-v3-turbo');
-    formData.append('response_format', 'json');
-    // Don't add language parameter for turbo model
+    formData.append('response_format', 'verbose_json');
+    formData.append('language', 'en');
+    formData.append('temperature', '0.0');
     console.log('FormData prepared');
 
     const groqApiKey = Deno.env.get('GROQ_API_KEY');
