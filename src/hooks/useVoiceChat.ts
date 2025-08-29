@@ -44,7 +44,7 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
       },
       (speechActive) => {
         console.log('🎤 Speech activity changed:', speechActive);
-        if (isMountedRef.current) setIsSpeaking(speechActive);
+        if (isMountedRef.current) setIsSpeechActive(speechActive);
       },
       (audioBlob) => {
         console.log('🎤 📝 Audio blob received, size:', audioBlob.size);
@@ -69,6 +69,8 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
       audioRecorderRef.current?.enableImmediately();
       // Invalidate current turn so any late responses are ignored
       turnIdRef.current += 1;
+      // Stop TTS playback state
+      setIsSpeaking(false);
     }
   }, [isSpeaking, isSpeechActive]);
 
@@ -330,7 +332,11 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
         const estimatedDuration = Math.max(3000, (audioLength / 1000) * 50); // Rough estimate
         audioRecorderRef.current?.suppressDuringPlayback(estimatedDuration);
         
+        // Set speaking state
+        setIsSpeaking(true);
+        
         await audioPlayerRef.current.playAudio(agentResponse.audio_base64, (isPlaying) => {
+          setIsSpeaking(isPlaying);
           if (!isPlaying) {
             // Re-enable microphone when audio playback ends
             setTimeout(() => {

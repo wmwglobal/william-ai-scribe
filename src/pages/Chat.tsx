@@ -248,11 +248,11 @@ export default function Chat() {
             <div>
               <h1 className="font-semibold text-sm">AI William</h1>
               <div className="flex items-center gap-2">
-               <p className="text-xs text-muted-foreground">
-                 {!sessionStarted ? "Ready to start" : 
-                  continuousMode ? (isSpeechActive ? "🗣️ Detected speech" : isProcessing ? "🎵 Transcribing..." : "👂 Auto-listening") :
-                  isSpeaking ? "🎵 Speaking..." : "💬 Manual mode"}
-               </p>
+                <p className="text-xs text-muted-foreground">
+                  {!sessionStarted ? "Ready to start" : 
+                   continuousMode ? (isSpeechActive ? "🗣️ Detecting your voice" : isProcessing ? "🎵 Transcribing..." : "👂 Auto-listening") :
+                   isSpeaking ? "🎵 AI is speaking" : "💬 Manual mode"}
+                </p>
               <MoodRing currentMode={selectedPersonality.id} />
               <div className={`w-1.5 h-1.5 rounded-full ${selectedModel.color} bg-gradient-to-r`} />
               <span className="text-xs text-muted-foreground">{selectedModel.name}</span>
@@ -451,12 +451,18 @@ export default function Chat() {
           {/* Status indicators */}
           <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
             <div className="flex items-center gap-4">
-              {continuousMode && !isSpeechActive && !isProcessing && (
+              {continuousMode && (isSpeechActive ? (
+                <span className="text-blue-500">🗣️ Detecting your voice</span>
+              ) : isSpeaking ? (
+                <span className="text-green-500">🎵 AI is speaking</span>
+              ) : isProcessing ? (
+                <span className="text-yellow-500">🎵 Transcribing...</span>
+              ) : (
                 <span className="flex items-center gap-1 text-green-600">
                   <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse" />
                   🎧 Listening continuously - speak naturally and I'll auto-detect when you're done!
                 </span>
-              )}
+              ))}
               {isSpeechActive && (
                 <span className="flex items-center gap-1 text-blue-600">
                   <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" />
