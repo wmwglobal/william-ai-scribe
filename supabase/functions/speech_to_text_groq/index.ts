@@ -81,7 +81,11 @@ serve(async (req) => {
     
     const { session_id, session_secret, audio_base64, model } = await req.json();
 
+    console.log('Request received with session_id:', session_id);
+    console.log('Audio base64 length:', audio_base64?.length || 0);
+
     if (!session_id || !session_secret || !audio_base64) {
+      console.error('Missing required fields');
       return new Response(
         JSON.stringify({ error: 'Missing required fields: session_id, session_secret, audio_base64' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -212,8 +216,16 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in speech_to_text_groq function:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Error message:', error.message);
+    console.error('Error name:', error.name);
+    
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ 
+        error: 'Internal server error',
+        details: error.message,
+        name: error.name
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
