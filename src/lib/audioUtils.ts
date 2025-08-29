@@ -174,6 +174,11 @@ export class AudioRecorder {
 
   async startContinuousListening(): Promise<void> {
     try {
+      // Check if mediaDevices is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('getUserMedia is not supported in this browser');
+      }
+
       // Clean up any existing resources first
       if (this.stream) {
         console.log('🎤 Cleaning up existing stream before starting new one');
@@ -181,13 +186,26 @@ export class AudioRecorder {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
 
-      this.stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        }
-      });
+      console.log('🎤 Requesting microphone access...');
+      
+      // Try with minimal constraints first
+      try {
+        this.stream = await navigator.mediaDevices.getUserMedia({
+          audio: true
+        });
+        console.log('🎤 ✅ Microphone access granted with basic constraints');
+      } catch (basicError) {
+        console.log('🎤 Basic constraints failed, trying with specific constraints...');
+        // Fallback to specific constraints
+        this.stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        });
+        console.log('🎤 ✅ Microphone access granted with specific constraints');
+      }
 
       // Log detailed track info for debugging
       const audioTrack = this.stream.getAudioTracks()[0];
