@@ -193,14 +193,31 @@ export class AudioRecorder {
 
       console.log('🎤 Requesting microphone access...');
       
+      // First, check if devices are available (this might prompt for permission)
+      console.log('🎤 Checking device permissions and availability...');
+      
+      try {
+        // Try to get device list first (this might trigger permission prompt)
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioInputs = devices.filter(device => device.kind === 'audioinput' && device.deviceId !== 'default');
+        console.log('🎤 Available audio input devices:', audioInputs.length, audioInputs.map(d => ({ id: d.deviceId, label: d.label })));
+      } catch (enumError) {
+        console.log('🎤 Device enumeration failed:', enumError);
+      }
+
       // Try with minimal constraints first - let getUserMedia handle device detection
       try {
+        console.log('🎤 Attempting getUserMedia with basic constraints...');
         this.stream = await navigator.mediaDevices.getUserMedia({
           audio: true
         });
         console.log('🎤 ✅ Microphone access granted with basic constraints');
       } catch (basicError) {
-        console.log('🎤 Basic constraints failed:', basicError);
+        console.error('🎤 Basic constraints failed:', {
+          name: basicError.name,
+          message: basicError.message,
+          stack: basicError.stack
+        });
         console.log('🎤 Trying with specific constraints...');
         
         // Fallback to specific constraints
@@ -214,17 +231,26 @@ export class AudioRecorder {
           });
           console.log('🎤 ✅ Microphone access granted with specific constraints');
         } catch (specificError) {
-          console.error('🎤 Both basic and specific constraints failed:', { basicError, specificError });
+          console.error('🎤 Specific constraints also failed:', {
+            name: specificError.name,
+            message: specificError.message,
+            stack: specificError.stack
+          });
           
-          // Provide user-friendly error message based on error type
-          if (basicError.name === 'NotFoundError') {
-            throw new Error('No microphone found. Please connect a microphone and refresh the page.');
-          } else if (basicError.name === 'NotAllowedError') {
-            throw new Error('Microphone access denied. Please allow microphone access in your browser settings and refresh the page.');
-          } else if (basicError.name === 'NotReadableError') {
-            throw new Error('Microphone is being used by another application. Please close other apps using the microphone and try again.');
+          // Remove the invalid constraint attempt - just log that all attempts failed
+          console.error('🎤 All attempts failed:', { basicError, specificError });
+          
+          // Provide detailed error message based on error type
+          if (basicError.name === 'NotAllowedError' || specificError.name === 'NotAllowedError') {
+            throw new Error('Microphone access denied. Please click the microphone icon in your browser\'s address bar and allow access, then refresh the page.');
+          } else if (basicError.name === 'NotFoundError' || specificError.name === 'NotFoundError') {
+            throw new Error('No microphone detected. Please ensure your microphone is connected and not being used by another application, then refresh the page.');
+          } else if (basicError.name === 'NotReadableError' || specificError.name === 'NotReadableError') {
+            throw new Error('Microphone is busy or unavailable. Please close other applications using the microphone and try again.');
+          } else if (basicError.name === 'OverconstrainedError' || specificError.name === 'OverconstrainedError') {
+            throw new Error('Microphone constraints not supported. Please try with a different microphone.');
           } else {
-            throw new Error(`Microphone access failed: ${basicError.message}`);
+            throw new Error(`Microphone access failed: ${basicError.message || 'Unknown error'}. Please check your browser settings and try again.`);
           }
         }
       }
