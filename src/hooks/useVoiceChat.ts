@@ -33,71 +33,22 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
   useEffect(() => {
     isMountedRef.current = true;
     
-    // Initialize audio player and recorder
-    audioPlayerRef.current = new AudioPlayer((playing) => {
-      console.log('🎵 AudioPlayer playing state changed:', playing);
-      if (isMountedRef.current) {
-        setIsSpeaking(playing);
-        
-        // CRITICAL: Mute microphone when AI is speaking to prevent feedback
-        if (playing) {
-          console.log('🎵 AI started speaking - temporarily muting microphone to prevent feedback');
-          audioRecorderRef.current?.pauseListening();
-        } else {
-          console.log('🎵 AI finished speaking - resuming microphone listening');
-          audioRecorderRef.current?.resumeListening();
-        }
-      }
-    });
+    // Initialize audio player and recorder with new simplified interface
+    audioPlayerRef.current = new AudioPlayer();
     
-    // Create the audio recorder with the callback function
+    // Create the audio recorder with the new simplified interface
     const recorder = new AudioRecorder(
-      (audioBlob: Blob) => {
-        console.log('🎤 ===== AUDIO CALLBACK TRIGGERED =====');
-        console.log('🎤 AudioRecorder callback triggered with blob size:', audioBlob.size);
-        console.log('🎤 Blob type:', audioBlob.type);
-        console.log('🎤 Session state:', { sessionId, sessionSecret: !!sessionSecret });
-        console.log('🎤 Component mounted:', isMountedRef.current);
-        console.log('🎤 Processing state:', processingRef.current);
-        console.log('🎤 About to call handleAudioData...');
-        handleAudioData(audioBlob);
-      },
       (recording) => {
         console.log('🎤 Recording state changed:', recording);
         if (isMountedRef.current) setIsRecording(recording);
       },
       (speechActive) => {
         console.log('🎤 Speech activity changed:', speechActive);
-        if (isMountedRef.current) setIsSpeechActive(speechActive);
+        if (isMountedRef.current) setIsSpeaking(speechActive);
       },
-      // Transcription check function for word-based detection
-      async (audioBlob: Blob): Promise<string> => {
-        try {
-          if (!sessionId || !sessionSecret) {
-            return '';
-          }
-
-          const audioBase64 = await audioToBase64(audioBlob);
-          const { data, error } = await supabase.functions.invoke('speech_to_text_groq', {
-            body: {
-              session_id: sessionId,
-              session_secret: sessionSecret,
-              audio_base64: audioBase64,
-              model: asrModel
-            }
-          });
-
-          if (error) {
-            console.error('🎤 📝 Transcription check error:', error);
-            return '';
-          }
-
-          const transcript = data.text?.trim() || '';
-          return transcript;
-        } catch (error) {
-          console.error('🎤 📝 Transcription check failed:', error);
-          return '';
-        }
+      (transcript) => {
+        console.log('🎤 📝 Transcript received:', transcript);
+        handleTranscriptReady(transcript);
       }
     );
     audioRecorderRef.current = recorder;
@@ -237,6 +188,30 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
       if (isMountedRef.current) setIsProcessing(false);
       console.log('🎤 ===== handleAudioData END =====');
     }
+  }
+
+  // Handler for when transcript is ready from the simplified AudioRecorder
+  function handleTranscriptReady(transcriptText: string) {
+    console.log('🎤 📝 Processing transcript:', transcriptText);
+    
+    if (!transcriptText || !transcriptText.trim() || !sessionId || !sessionSecret) {
+      return;
+    }
+
+    // Add user message to transcript
+    const userMessage = transcriptText.trim();
+    const newTranscriptEntry = {
+      speaker: 'visitor' as const,
+      text: userMessage,
+      timestamp: new Date()
+    };
+
+    if (isMountedRef.current) {
+      setTranscript(prev => [...prev, newTranscriptEntry]);
+    }
+
+    // Send to agent
+    sendToAgent(userMessage);
   }
 
   async function createSession(consent: boolean = false): Promise<string> {

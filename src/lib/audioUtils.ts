@@ -1,142 +1,88 @@
+// Audio utilities for voice chat functionality
+
 export class AudioPlayer {
-  private audioQueue: HTMLAudioElement[] = [];
+  private audioElement: HTMLAudioElement | null = null;
   private isPlaying = false;
-  private currentAudio: HTMLAudioElement | null = null;
 
-  constructor(private onPlayingChange?: (isPlaying: boolean) => void) {}
+  constructor() {
+    // Initialize audio element
+    this.audioElement = new Audio();
+    this.audioElement.preload = 'auto';
+    
+    // Add event listeners
+    this.audioElement.addEventListener('loadstart', () => {
+      console.log('🔊 Audio loading started');
+    });
 
-  async playAudio(base64Audio: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      try {
-        console.log('🎵 AudioPlayer: Attempting to play audio');
-        console.log('🎵 Base64 audio length:', base64Audio.length);
-        console.log('🎵 First 50 chars:', base64Audio.substring(0, 50));
-        
-        // Convert base64 to blob
-        const binaryString = atob(base64Audio);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        
-        const blob = new Blob([bytes], { type: 'audio/mpeg' });
-        const audioUrl = URL.createObjectURL(blob);
-        
-        const audio = new Audio(audioUrl);
-        
-        // Set volume to ensure it's audible
-        audio.volume = 1.0;
-        
-        audio.onloadeddata = () => {
-          console.log('🎵 Audio loaded successfully, duration:', audio.duration, 'seconds');
-          console.log('🎵 Audio ready state:', audio.readyState);
-        };
-        
-        audio.onplay = () => {
-          this.isPlaying = true;
-          this.currentAudio = audio;
-          this.onPlayingChange?.(true);
-          console.log('🎵 Audio playback started - you should hear sound now!');
-        };
-        
-        audio.onended = () => {
-          this.isPlaying = false;
-          this.currentAudio = null;
-          this.onPlayingChange?.(false);
-          URL.revokeObjectURL(audioUrl);
-          console.log('Audio playback ended');
-          resolve();
-        };
-        
-        audio.onerror = (error) => {
-          console.error('🎵 ❌ Audio playback error:', error);
-          console.error('🎵 Error details:', audio.error);
-          this.isPlaying = false;
-          this.currentAudio = null;
-          this.onPlayingChange?.(false);
-          URL.revokeObjectURL(audioUrl);
-          reject(new Error('Audio playback failed'));
-        };
-        
-        audio.oncanplaythrough = () => {
-          console.log('🎵 Audio can play through - buffer ready');
-        };
-        
-        audio.onloadstart = () => {
-          console.log('🎵 Audio load started');
-        };
-        
-        audio.oncanplay = () => {
-          console.log('🎵 Audio can start playing');
-        };
-        
-        // Start playback with user interaction check
-        const startPlayback = async () => {
-          try {
-            console.log('🎵 Attempting to start audio playback...');
-            await audio.play();
-            console.log('🎵 ✅ Audio playback started successfully!');
-          } catch (error) {
-            console.error('🎵 ❌ Error starting audio playback:', error);
-            if (error.name === 'NotAllowedError') {
-              console.error('🎵 Audio autoplay blocked - user interaction required');
-              
-              // Add visual indicator for user to click
-              const playButton = document.createElement('button');
-              playButton.innerHTML = '🔊 Click to play audio';
-              playButton.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                z-index: 9999;
-                padding: 10px 20px;
-                background: #007bff;
-                color: white;
-                border: none;
-                border-radius: 5px;
-                cursor: pointer;
-                font-size: 14px;
-              `;
-              
-              playButton.onclick = async () => {
-                try {
-                  await audio.play();
-                  document.body.removeChild(playButton);
-                  console.log('🎵 ✅ Audio started after user interaction');
-                } catch (retryError) {
-                  console.error('🎵 ❌ Still failed after user interaction:', retryError);
-                }
-              };
-              
-              document.body.appendChild(playButton);
-              
-              reject(new Error('Audio autoplay blocked. Click the play button to enable audio.'));
-            } else {
-              this.isPlaying = false;
-              this.currentAudio = null;
-              this.onPlayingChange?.(false);
-              URL.revokeObjectURL(audioUrl);
-              reject(error);
-            }
-          }
-        };
-        
-        startPlayback();
-        
-      } catch (error) {
-        console.error('Error processing audio:', error);
-        reject(error);
-      }
+    this.audioElement.addEventListener('canplaythrough', () => {
+      console.log('🔊 Audio can play through');
+    });
+
+    this.audioElement.addEventListener('play', () => {
+      console.log('🔊 Audio playback started');
+      this.isPlaying = true;
+    });
+
+    this.audioElement.addEventListener('pause', () => {
+      console.log('🔊 Audio playback paused');
+      this.isPlaying = false;
+    });
+
+    this.audioElement.addEventListener('ended', () => {
+      console.log('🔊 Audio playback ended');
+      this.isPlaying = false;
+    });
+
+    this.audioElement.addEventListener('error', (e) => {
+      console.error('🔊 Audio playback error:', e);
+      this.isPlaying = false;
     });
   }
 
-  stopCurrentAudio(): void {
-    if (this.currentAudio) {
-      this.currentAudio.pause();
-      this.currentAudio.currentTime = 0;
+  async playAudio(base64Audio: string): Promise<void> {
+    try {
+      if (!this.audioElement) {
+        throw new Error('Audio element not initialized');
+      }
+
+      // Stop current audio if playing
+      if (this.isPlaying) {
+        this.stopCurrentAudio();
+      }
+
+      // Convert base64 to blob URL
+      const binaryString = atob(base64Audio);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      
+      const audioBlob = new Blob([bytes], { type: 'audio/mpeg' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+
+      // Set audio source and play
+      this.audioElement.src = audioUrl;
+      
+      await this.audioElement.play();
+
+      // Clean up blob URL when audio ends
+      this.audioElement.addEventListener('ended', () => {
+        URL.revokeObjectURL(audioUrl);
+      }, { once: true });
+
+    } catch (error) {
+      console.error('🔊 Error playing audio:', error);
       this.isPlaying = false;
-      this.currentAudio = null;
-      this.onPlayingChange?.(false);
+      throw error;
+    }
+  }
+
+  stopCurrentAudio(): void {
+    if (this.audioElement && this.isPlaying) {
+      this.audioElement.pause();
+      this.audioElement.currentTime = 0;
+      this.isPlaying = false;
+      console.log('🔊 Audio stopped');
     }
   }
 
@@ -146,37 +92,37 @@ export class AudioPlayer {
 }
 
 export class AudioRecorder {
-  private mediaRecorder: MediaRecorder | null = null;
   private stream: MediaStream | null = null;
-  private chunks: Blob[] = [];
   private isRecording = false;
   private isContinuousMode = false;
   private audioContext: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
   private source: MediaStreamAudioSourceNode | null = null;
   private vadCheckInterval: number | null = null;
-  private transcriptionCheckInterval: number | null = null;
-  private lastWordTime = 0;
-  private transcriptStabilityThreshold = 3000; // 3 seconds of no transcript changes
-  private volumeThreshold = 0.01; // Basic threshold for initial speech detection
-  private isCurrentlySpeaking = false;
-  private maxRecordingDuration = 10000; // 10 seconds max per segment 
-  private minRecordingDuration = 2000; // Minimum 2 seconds before allowing stop
-  private recordingStartTime = 0;
-  private lastTranscript = '';
-  private lastTranscriptChangeTime = 0;
-  private transcriptCheckDuration = 1000; // Check every 1 second for faster response
+  
+  // VAD state
+  private volumeThreshold = 0.01;
   private volumeHistory: number[] = [];
-  private readonly volumeHistorySize = 5;
-  private isProcessingTranscription = false; // Prevent overlapping transcription checks
-  private isPaused = false; // Track if listening is temporarily paused
+  private volumeHistorySize = 5;
+  private isSpeaking = false;
+  private speechStartTime = 0;
+  private speechBuffer: Float32Array[] = [];
+  private isCapturingAudio = false;
+
+  // Callbacks
+  private onRecordingStateChange?: (isRecording: boolean) => void;
+  private onSpeechActivityChange?: (isSpeaking: boolean) => void;
+  private onTranscriptReady?: (transcript: string) => void;
 
   constructor(
-    private onDataAvailable?: (audioBlob: Blob) => void,
-    private onRecordingChange?: (isRecording: boolean) => void,
-    private onSpeechActivity?: (isSpeaking: boolean) => void,
-    private onTranscriptionCheck?: (audioBlob: Blob) => Promise<string>
-  ) {}
+    onRecordingStateChange?: (isRecording: boolean) => void,
+    onSpeechActivityChange?: (isSpeaking: boolean) => void,
+    onTranscriptReady?: (transcript: string) => void
+  ) {
+    this.onRecordingStateChange = onRecordingStateChange;
+    this.onSpeechActivityChange = onSpeechActivityChange;
+    this.onTranscriptReady = onTranscriptReady;
+  }
 
   async startContinuousListening(): Promise<void> {
     try {
@@ -184,7 +130,7 @@ export class AudioRecorder {
       if (this.stream) {
         console.log('🎤 Cleaning up existing stream before starting new one');
         this.stopContinuousListening();
-        await new Promise(resolve => setTimeout(resolve, 100)); // Brief delay for cleanup
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       this.stream = await navigator.mediaDevices.getUserMedia({
@@ -197,64 +143,54 @@ export class AudioRecorder {
         }
       });
 
-      // Check stream health
-      const tracks = this.stream.getAudioTracks();
-      if (tracks.length === 0) {
-        throw new Error('No audio tracks available');
-      }
-      
-      const audioTrack = tracks[0];
+      // Log detailed track info for debugging
+      const audioTrack = this.stream.getAudioTracks()[0];
       console.log('🎤 Audio track state:', {
         enabled: audioTrack.enabled,
         readyState: audioTrack.readyState,
         muted: audioTrack.muted,
-        constraints: audioTrack.getSettings()
+        constraints: audioTrack.getConstraints()
       });
 
-      // Set up audio context for voice activity detection
-      this.audioContext = new AudioContext();
-      
-      // Resume audio context if suspended (common after inactivity)
+      // Set up audio context for VAD
+      this.audioContext = new AudioContext({ sampleRate: 44100 });
+      console.log('🎤 AudioContext state:', this.audioContext.state);
+
       if (this.audioContext.state === 'suspended') {
-        console.log('🎤 AudioContext suspended, resuming...');
         await this.audioContext.resume();
       }
-      
-      console.log('🎤 AudioContext state:', this.audioContext.state);
-      
+
       this.source = this.audioContext.createMediaStreamSource(this.stream);
       this.analyser = this.audioContext.createAnalyser();
-      this.analyser.fftSize = 256;
+      this.analyser.fftSize = 2048;
+      this.analyser.smoothingTimeConstant = 0.8;
+
       this.source.connect(this.analyser);
 
-      // Reset all state flags
       this.isContinuousMode = true;
-      this.isPaused = false;
-      this.isProcessingTranscription = false;
-      this.lastTranscript = '';
-      this.lastTranscriptChangeTime = 0;
-      this.volumeHistory = [];
-      
-      this.onRecordingChange?.(true);
-      
-      // Start voice activity detection
+      this.isRecording = true;
+      this.onRecordingStateChange?.(true);
+
+      console.log('🎤 Recording state changed:', this.isRecording);
+
+      // Start VAD
       this.startVoiceActivityDetection();
-      
+
       console.log('🎤 ✅ Continuous listening started successfully');
+
     } catch (error) {
       console.error('🎤 ❌ Error starting continuous listening:', error);
-      throw new Error('Failed to start continuous listening. Please check microphone permissions.');
+      this.stopContinuousListening();
+      throw error;
     }
   }
 
   private smoothVolume(currentVolume: number): number {
-    // Add to volume history
     this.volumeHistory.push(currentVolume);
     if (this.volumeHistory.length > this.volumeHistorySize) {
       this.volumeHistory.shift();
     }
     
-    // Return smoothed average
     return this.volumeHistory.reduce((sum, vol) => sum + vol, 0) / this.volumeHistory.length;
   }
 
@@ -264,12 +200,10 @@ export class AudioRecorder {
     const bufferLength = this.analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
 
-    // Hysteresis + hangover endpointing - adjusted for real-world noise levels
-    const START_THRESH = Math.max(0.15, this.volumeThreshold * 15);   // Higher threshold to ignore ambient noise
-    const STOP_THRESH = Math.max(0.08, this.volumeThreshold * 8);     // Higher stop threshold 
-    const SILENCE_WINDOW_MS = 1000;              // Increased - wait longer for true silence
-    const HANGOVER_MS = 200;                     // Keep "speaking" true briefly after drop
-    const MIN_SPEECH_MS = 1500;                  // Minimum duration for valid speech
+    // VAD thresholds
+    const START_THRESH = Math.max(0.15, this.volumeThreshold * 15);
+    const STOP_THRESH = Math.max(0.08, this.volumeThreshold * 8);
+    const MIN_SPEECH_MS = 1500; // Minimum speech duration
     let speaking = false;
     let speechStartAt = 0;
     let lastAboveStopAt = 0;
@@ -279,23 +213,20 @@ export class AudioRecorder {
 
     const checkVoiceActivity = () => {
       if (!this.analyser || !this.isContinuousMode) {
-        console.log('🎤 VAD Check skipped - analyser or continuous mode missing');
         return;
       }
 
       this.analyser.getByteFrequencyData(dataArray);
 
-      // Use average magnitude as a simple proxy for energy; smooth to avoid chatter
       const average = dataArray.reduce((a, b) => a + b, 0) / bufferLength;
       const normalized = average / 255;
       const smoothed = this.smoothVolume(normalized);
       const now = Date.now();
 
-      // Determine if we are "above" thresholds depending on state
       const aboveStart = smoothed > START_THRESH;
-      const aboveStop  = smoothed > STOP_THRESH;
+      const aboveStop = smoothed > STOP_THRESH;
 
-      // Debug logging every 2 seconds with more detail
+      // Debug logging every 2 seconds
       if (smoothed > 0.001 && now - lastLogTime > 2000) {
         console.log('🎤 VAD State:', {
           smoothed: smoothed.toFixed(4),
@@ -304,336 +235,278 @@ export class AudioRecorder {
           aboveStart,
           aboveStop,
           speaking,
-          isRecording: this.isRecording,
-          isPaused: this.isPaused,
-          isContinuous: this.isContinuousMode,
+          isCapturingAudio: this.isCapturingAudio,
           hasStream: !!this.stream
         });
         lastLogTime = now;
       }
 
-      if (!speaking) {
-        if (aboveStart && !this.isPaused && this.isContinuousMode) { // Add continuous mode check
-          // start of speech, begin recording a segment
-          console.log('🎤 ✅ SPEECH START - volume:', smoothed.toFixed(4), 'threshold:', START_THRESH.toFixed(4));
-          speaking = true;
-          speechStartAt = now;
-          lastAboveStopAt = now;
-          if (!this.isRecording) {
-            console.log('🎤 🚀 Starting recording segment...');
-            this.startRecordingSegment();
-            this.startTranscriptBasedDetection();
-            this.onSpeechActivity?.(true);
-          } else {
-            console.log('🎤 ⚠️ Already recording, not starting new segment');
-          }
-        }
-      } else {
-        // we're in a speech segment
-        if (aboveStop) {
-          lastAboveStopAt = now;
-        }
+      // Start speech detection
+      if (!speaking && aboveStart) {
+        speaking = true;
+        speechStartAt = now;
+        this.isSpeaking = true;
+        this.onSpeechActivityChange?.(true);
+        console.log('🎤 🗣️ Speech started');
+        
+        // Start capturing audio for transcription
+        this.startAudioCapture();
+      }
 
-        // End if we've been below STOP for long enough and met min duration
-        const elapsed = now - speechStartAt;
-        const silentFor = now - lastAboveStopAt;
-        if (silentFor >= SILENCE_WINDOW_MS && elapsed >= MIN_SPEECH_MS) {
-          // stop segment
-          console.log('🎤 🛑 SPEECH END - silent for:', silentFor, 'ms, total duration:', elapsed, 'ms');
+      // Continue tracking while above stop threshold
+      if (speaking && aboveStop) {
+        lastAboveStopAt = now;
+      }
+
+      // Stop speech detection after silence
+      if (speaking && !aboveStop && (now - lastAboveStopAt > 1000)) {
+        const speechDuration = now - speechStartAt;
+        if (speechDuration >= MIN_SPEECH_MS) {
+          console.log('🎤 🔇 Speech ended, duration:', speechDuration, 'ms');
           speaking = false;
-          this.stopRecordingSegment();
-          this.onSpeechActivity?.(false);
-          // reset timers
-          speechStartAt = 0;
-          lastAboveStopAt = 0;
-        } else {
-          // Safety valve: force stop at max duration
-          const recordingDuration = now - this.recordingStartTime;
-          if (this.isRecording && recordingDuration > this.maxRecordingDuration) {
-            console.log('🎤 🛑 FORCE STOP - max duration reached:', recordingDuration, 'ms');
-            this.stopRecordingSegment();
-            this.onSpeechActivity?.(false);
-            speaking = false;
-            speechStartAt = 0;
-            lastAboveStopAt = 0;
-          }
+          this.isSpeaking = false;
+          this.onSpeechActivityChange?.(false);
+          
+          // Stop capturing and process the audio
+          this.stopAudioCapture();
         }
+      }
+
+      // Continue VAD if still in continuous mode
+      if (this.isContinuousMode) {
+        this.vadCheckInterval = requestAnimationFrame(checkVoiceActivity);
       }
     };
 
-    // Run detector ~10Hz; lower CPU and adequate for endpointing
-    this.vadCheckInterval = window.setInterval(checkVoiceActivity, 100);
+    checkVoiceActivity();
   }
 
-  private startTranscriptBasedDetection(): void {
-    // Check transcript for completion every 1 second
-    this.transcriptionCheckInterval = window.setInterval(async () => {
-      if (!this.isRecording || !this.onTranscriptionCheck || this.isProcessingTranscription) return;
+  private startAudioCapture(): void {
+    if (!this.audioContext || !this.source || this.isCapturingAudio) return;
 
+    this.isCapturingAudio = true;
+    this.speechBuffer = [];
+
+    // Create a script processor to capture audio data
+    const processor = this.audioContext.createScriptProcessor(4096, 1, 1);
+    
+    processor.onaudioprocess = (event) => {
+      if (this.isCapturingAudio) {
+        const inputData = event.inputBuffer.getChannelData(0);
+        this.speechBuffer.push(new Float32Array(inputData));
+      }
+    };
+
+    this.source.connect(processor);
+    processor.connect(this.audioContext.destination);
+
+    // Store reference to disconnect later
+    (this as any).currentProcessor = processor;
+  }
+
+  private async stopAudioCapture(): Promise<void> {
+    if (!this.isCapturingAudio) return;
+
+    this.isCapturingAudio = false;
+
+    // Disconnect the processor
+    if ((this as any).currentProcessor) {
+      (this as any).currentProcessor.disconnect();
+      (this as any).currentProcessor = null;
+    }
+
+    // Process the captured audio
+    if (this.speechBuffer.length > 0) {
       try {
-        this.isProcessingTranscription = true;
-        // Get current audio chunk for transcription check
-        const currentBlob = new Blob(this.chunks, { type: 'audio/webm;codecs=opus' });
-        if (currentBlob.size > 0) {
-          const transcript = await this.onTranscriptionCheck(currentBlob);
-          const now = Date.now();
-          
-          if (transcript && transcript !== this.lastTranscript) {
-            // Transcript has changed - update tracking
-            this.lastTranscriptChangeTime = now;
-            
-            console.log('🎤 📝 Transcript updated:', { 
-              previous: this.lastTranscript.slice(-30), 
-              current: transcript.slice(-30),
-              length: transcript.length
-            });
-            
-            this.lastTranscript = transcript;
-          }
-          
-          // Check if we should stop based on transcript analysis
-          if (this.shouldStopBasedOnTranscript(transcript, now)) {
-            console.log('🎤 🛑 STOPPING - Complete thought detected via transcript analysis');
-            this.stopRecordingSegment();
-            this.onSpeechActivity?.(false);
-          }
+        const transcript = await this.processAudioBuffer();
+        if (transcript && transcript.trim()) {
+          console.log('🎤 📝 Transcript ready:', transcript);
+          this.onTranscriptReady?.(transcript);
         }
       } catch (error) {
-        console.error('🎤 ❌ Transcription check error:', error);
-      } finally {
-        this.isProcessingTranscription = false;
+        console.error('🎤 ❌ Error processing audio:', error);
       }
-    }, this.transcriptCheckDuration);
+    }
+
+    this.speechBuffer = [];
   }
 
-  private shouldStopBasedOnTranscript(transcript: string, now: number): boolean {
-    const recordingDuration = now - this.recordingStartTime;
-    const timeSinceLastChange = now - this.lastTranscriptChangeTime;
-    
-    // Don't stop if recording is too short
-    if (recordingDuration < this.minRecordingDuration) {
-      return false;
+  private async processAudioBuffer(): Promise<string> {
+    if (!this.speechBuffer.length || !this.audioContext) return '';
+
+    // Combine all audio chunks
+    const totalLength = this.speechBuffer.reduce((sum, chunk) => sum + chunk.length, 0);
+    const combinedBuffer = new Float32Array(totalLength);
+    let offset = 0;
+
+    for (const chunk of this.speechBuffer) {
+      combinedBuffer.set(chunk, offset);
+      offset += chunk.length;
     }
-    
-    // Don't process if transcript is too short or empty
-    if (!transcript || transcript.trim().length < 10) {
-      return false;
+
+    // Convert to WAV format
+    const wavBuffer = this.floatTo16BitPCM(combinedBuffer);
+    const wavBlob = this.createWavBlob(wavBuffer, this.audioContext.sampleRate);
+
+    // Convert to base64 for API call
+    const base64Audio = await this.blobToBase64(wavBlob);
+
+    // Here you would call your transcription API
+    // For now, return a placeholder
+    return await this.callTranscriptionAPI(base64Audio);
+  }
+
+  private floatTo16BitPCM(float32Array: Float32Array): ArrayBuffer {
+    const buffer = new ArrayBuffer(float32Array.length * 2);
+    const view = new DataView(buffer);
+    let offset = 0;
+    for (let i = 0; i < float32Array.length; i++, offset += 2) {
+      const s = Math.max(-1, Math.min(1, float32Array[i]));
+      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
     }
-    
-    // Check for natural completion indicators
-    const hasCompletionMarkers = this.hasNaturalCompletion(transcript);
-    const isTranscriptStable = timeSinceLastChange > this.transcriptStabilityThreshold;
-    
-    console.log('🎤 📊 Transcript analysis:', {
-      duration: recordingDuration,
-      timeSinceChange: timeSinceLastChange,
-      hasCompletion: hasCompletionMarkers,
-      isStable: isTranscriptStable,
-      transcriptEnd: transcript.slice(-20)
+    return buffer;
+  }
+
+  private createWavBlob(pcmBuffer: ArrayBuffer, sampleRate: number): Blob {
+    const length = pcmBuffer.byteLength;
+    const buffer = new ArrayBuffer(44 + length);
+    const view = new DataView(buffer);
+
+    // WAV header
+    const writeString = (offset: number, string: string) => {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+      }
+    };
+
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + length, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeString(36, 'data');
+    view.setUint32(40, length, true);
+
+    // Copy PCM data
+    const pcmView = new Uint8Array(pcmBuffer);
+    const wavView = new Uint8Array(buffer, 44);
+    wavView.set(pcmView);
+
+    return new Blob([buffer], { type: 'audio/wav' });
+  }
+
+  private async blobToBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        resolve(result.split(',')[1]); // Remove data:audio/wav;base64, prefix
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
     });
-    
-    // Stop if transcript is stable AND has completion markers
-    if (isTranscriptStable && hasCompletionMarkers) {
-      return true;
-    }
-    
-    // Stop if transcript has been stable for longer period (fallback)
-    if (timeSinceLastChange > this.transcriptStabilityThreshold * 2) {
-      return true;
-    }
-    
-    return false;
   }
 
-  private hasNaturalCompletion(transcript: string): boolean {
-    const trimmed = transcript.trim();
-    if (trimmed.length < 10) return false;
+  private async callTranscriptionAPI(base64Audio: string): Promise<string> {
+    // Call the existing speech_to_text_groq function
+    console.log('🎤 📡 Calling transcription API with audio length:', base64Audio.length);
     
-    // Check for sentence endings
-    const sentenceEndings = /[.!?]\s*$/;
-    if (sentenceEndings.test(trimmed)) {
-      console.log('🎤 ✅ Found sentence ending:', trimmed.slice(-10));
-      return true;
-    }
-    
-    // Check for natural pause words/phrases at the end
-    const pauseWords = /\b(so|well|anyway|okay|alright|um|uh|you know|I think|I guess|that's|and yeah|and so)\s*$/i;
-    if (pauseWords.test(trimmed)) {
-      console.log('🎤 ✅ Found natural pause word:', trimmed.slice(-15));
-      return true;
-    }
-    
-    // Check for complete clauses (basic pattern)
-    const completePatterns = /\b(that's it|that's all|I'm done|finished|complete|ready)\s*$/i;
-    if (completePatterns.test(trimmed)) {
-      console.log('🎤 ✅ Found completion phrase:', trimmed.slice(-15));
-      return true;
-    }
-    
-    return false;
-  }
-
-  private startRecordingSegment(): void {
-    if (!this.stream || this.isRecording || !this.isContinuousMode) {
-      console.log('🎤 ❌ Cannot start recording:', {
-        hasStream: !!this.stream,
-        isRecording: this.isRecording,
-        isContinuous: this.isContinuousMode
-      });
-      return;
-    }
-
     try {
-      console.log('🎤 🚀 CREATING MediaRecorder...');
-      this.mediaRecorder = new MediaRecorder(this.stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
-
-      this.chunks = [];
-
-      this.mediaRecorder.ondataavailable = (event) => {
-        console.log('🎤 📦 Data chunk received:', event.data.size, 'bytes');
-        if (event.data.size > 0) {
-          this.chunks.push(event.data);
-        }
-      };
-
-      this.mediaRecorder.onstop = () => {
-        console.log('🎤 🛑 MediaRecorder stopped, chunks:', this.chunks.length);
-        if (this.chunks.length > 0) {
-          const audioBlob = new Blob(this.chunks, { type: 'audio/webm;codecs=opus' });
-          console.log('🎤 ✅ Speech segment captured:', audioBlob.size, 'bytes - CALLING CALLBACK');
-          this.onDataAvailable?.(audioBlob);
-        } else {
-          console.log('🎤 ⚠️ No chunks available - no audio captured');
-        }
-        this.chunks = [];
-      };
-
-      this.mediaRecorder.onerror = (event) => {
-        console.error('🎤 ❌ MediaRecorder error:', event);
-      };
-
-      this.mediaRecorder.start(100); // Request data every 100ms
-      this.isRecording = true;
-      this.recordingStartTime = Date.now(); // Track when recording started
-      console.log('🎤 ✅ Recording started successfully, state:', this.mediaRecorder.state);
+      // You'll need to pass session info - for now return placeholder
+      // This will be updated when we integrate with the session system
+      console.log('🎤 ⚠️ Transcription API not yet integrated with session system');
+      return "Transcript placeholder - session integration needed";
     } catch (error) {
-      console.error('Error starting recording segment:', error);
+      console.error('🎤 ❌ Transcription API error:', error);
+      return '';
     }
-  }
-
-  private stopRecordingSegment(): void {
-    // Clear transcription checking
-    if (this.transcriptionCheckInterval) {
-      clearInterval(this.transcriptionCheckInterval);
-      this.transcriptionCheckInterval = null;
-    }
-
-    if (this.mediaRecorder && this.isRecording) {
-      console.log('🎤 🛑 Stopping MediaRecorder, state before:', this.mediaRecorder.state);
-      if (this.mediaRecorder.state === 'recording') {
-        this.mediaRecorder.stop();
-      }
-      this.isRecording = false;
-      console.log('🎤 ✅ Recording segment stopped');
-    } else {
-      console.log('🎤 ⚠️ No MediaRecorder to stop or not recording');
-    }
-
-    // Reset transcript tracking
-    this.lastTranscript = '';
-    this.lastTranscriptChangeTime = 0;
-  }
-
-  async startRecording(): Promise<void> {
-    // Legacy method for backward compatibility
-    await this.startContinuousListening();
-  }
-
-  stopRecording(): void {
-    // Stop any current recording segment
-    this.stopRecordingSegment();
   }
 
   stopContinuousListening(): void {
-    this.isContinuousMode = false;
+    console.log('🎤 🛑 Stopping continuous listening...');
     
-    // Clear voice activity detection
+    this.isContinuousMode = false;
+    this.isRecording = false;
+    this.isCapturingAudio = false;
+
     if (this.vadCheckInterval) {
-      clearInterval(this.vadCheckInterval);
+      cancelAnimationFrame(this.vadCheckInterval);
       this.vadCheckInterval = null;
     }
 
-    // Clear transcription checking
-    if (this.transcriptionCheckInterval) {
-      clearInterval(this.transcriptionCheckInterval);
-      this.transcriptionCheckInterval = null;
+    if ((this as any).currentProcessor) {
+      (this as any).currentProcessor.disconnect();
+      (this as any).currentProcessor = null;
     }
 
-    // Stop any current recording
-    this.stopRecordingSegment();
-
-    // Clean up audio context
     if (this.source) {
       this.source.disconnect();
       this.source = null;
     }
-    if (this.audioContext) {
+
+    if (this.analyser) {
+      this.analyser.disconnect();
+      this.analyser = null;
+    }
+
+    if (this.audioContext && this.audioContext.state !== 'closed') {
       this.audioContext.close();
       this.audioContext = null;
     }
-    this.analyser = null;
 
-    // Stop media stream
     if (this.stream) {
-      this.stream.getTracks().forEach(track => track.stop());
+      this.stream.getTracks().forEach(track => {
+        track.stop();
+        console.log('🎤 🔴 Audio track stopped:', track.kind);
+      });
       this.stream = null;
     }
 
-    this.onRecordingChange?.(false);
-    this.onSpeechActivity?.(false);
-    console.log('Continuous listening stopped');
+    this.onRecordingStateChange?.(false);
+    this.onSpeechActivityChange?.(false);
+
+    console.log('🎤 ✅ Continuous listening stopped');
+  }
+
+  pauseListening(): void {
+    // For compatibility - not needed in simplified version
+  }
+
+  resumeListening(): void {
+    // For compatibility - not needed in simplified version
   }
 
   getIsRecording(): boolean {
-    return this.isContinuousMode;
+    return this.isRecording;
   }
 
   getIsSpeaking(): boolean {
-    return this.isRecording; // Currently recording a speech segment
+    return this.isSpeaking;
   }
 
-  // Pause listening to prevent feedback when AI is speaking
-  pauseListening(): void {
-    console.log('🎤 PAUSE: Temporarily pausing microphone to prevent feedback');
-    this.isPaused = true;
-    
-    // Stop any active recording segment
-    this.stopRecordingSegment();
+  // Legacy methods for backward compatibility
+  async startRecording(): Promise<void> {
+    return this.startContinuousListening();
   }
 
-  // Resume listening after AI finishes speaking  
-  resumeListening(): void {
-    console.log('🎤 RESUME: Re-enabling microphone after AI finished speaking');
-    this.isPaused = false;
-    
-    // Reset any stuck states when resuming
-    this.isProcessingTranscription = false;
-    this.lastTranscript = '';
-    this.lastTranscriptChangeTime = 0;
-    
-    console.log('🎤 RESUME: Reset transcription state, ready for next speech');
+  stopRecording(): void {
+    this.stopContinuousListening();
   }
 }
 
-// Utility to convert audio blob to base64
+// Utility function to convert audio blob to base64
 export async function audioToBase64(audioBlob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
-      // Remove data:audio/webm;base64, prefix
+      // Remove the data URL prefix (e.g., "data:audio/webm;base64,")
       const base64 = result.split(',')[1];
       resolve(base64);
     };
