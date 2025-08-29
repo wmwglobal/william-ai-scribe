@@ -196,17 +196,6 @@ export default function Chat() {
                 onModelChange={setSelectedModel}
               />
 
-              {/* Voice Instructions Card */}
-              <div className="bg-card/50 rounded-lg p-4 border border-primary/20">
-                <div className="flex items-center justify-center gap-2 mb-3">
-                  <Mic className="w-5 h-5 text-primary" />
-                  <span className="font-medium text-foreground">Voice Chat Ready</span>
-                </div>
-                <p className="text-sm text-muted-foreground text-center">
-                  Once you start the conversation, click the microphone button to begin talking with William. 
-                  He'll listen and respond with voice!
-                </p>
-              </div>
             </div>
 
             <Button 
@@ -301,14 +290,14 @@ export default function Chat() {
               <p className="text-sm mb-4">Start a conversation by recording audio or typing a message</p>
               
               {/* Microphone Instructions */}
-              <div className="bg-card/50 rounded-lg p-4 max-w-md mx-auto border">
+              <div className="bg-card/50 rounded-lg p-4 max-w-md mx-auto border border-primary/20">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <Mic className="w-5 h-5 text-primary" />
-                  <span className="font-medium text-foreground">Voice Chat Instructions</span>
+                  <span className="font-medium text-foreground">Ready to Chat</span>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Click the microphone button below to start talking. 
-                  The system will automatically detect when you speak and transcribe your voice.
+                <p className="text-sm text-muted-foreground text-center">
+                  Click the microphone button below to start talking with the AI. 
+                  It will listen and respond with voice!
                 </p>
               </div>
             </div>
@@ -473,7 +462,7 @@ export default function Chat() {
               {isSpeaking && (
                 <span className="flex items-center gap-1 text-blue-500">
                   <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                  🎵 William is speaking...
+                  🎵 AI is speaking...
                 </span>
               )}
             </div>
