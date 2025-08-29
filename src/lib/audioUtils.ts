@@ -176,7 +176,12 @@ export class AudioRecorder {
     try {
       // Check if mediaDevices is available
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('getUserMedia is not supported in this browser');
+        throw new Error('Microphone access is not supported in this browser. Please use Chrome, Firefox, or Safari.');
+      }
+
+      // Check for HTTPS/localhost requirement
+      if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+        throw new Error('Microphone access requires HTTPS or localhost');
       }
 
       // Clean up any existing resources first
@@ -184,6 +189,21 @@ export class AudioRecorder {
         console.log('🎤 Cleaning up existing stream before starting new one');
         this.stopContinuousListening();
         await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      // Check for available audio input devices
+      console.log('🎤 Checking for available audio input devices...');
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioInputs = devices.filter(device => device.kind === 'audioinput');
+        console.log('🎤 Found audio input devices:', audioInputs.length);
+        
+        if (audioInputs.length === 0) {
+          throw new Error('No microphone devices found. Please connect a microphone and try again.');
+        }
+      } catch (devicesError) {
+        console.warn('🎤 Could not enumerate devices:', devicesError);
+        // Continue anyway, as some browsers may restrict device enumeration
       }
 
       console.log('🎤 Requesting microphone access...');
@@ -195,16 +215,33 @@ export class AudioRecorder {
         });
         console.log('🎤 ✅ Microphone access granted with basic constraints');
       } catch (basicError) {
-        console.log('🎤 Basic constraints failed, trying with specific constraints...');
+        console.log('🎤 Basic constraints failed:', basicError);
+        console.log('🎤 Trying with specific constraints...');
+        
         // Fallback to specific constraints
-        this.stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true
+        try {
+          this.stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true
+            }
+          });
+          console.log('🎤 ✅ Microphone access granted with specific constraints');
+        } catch (specificError) {
+          console.error('🎤 Both basic and specific constraints failed:', { basicError, specificError });
+          
+          // Provide user-friendly error message based on error type
+          if (basicError.name === 'NotFoundError') {
+            throw new Error('No microphone found. Please connect a microphone and refresh the page.');
+          } else if (basicError.name === 'NotAllowedError') {
+            throw new Error('Microphone access denied. Please allow microphone access in your browser settings and refresh the page.');
+          } else if (basicError.name === 'NotReadableError') {
+            throw new Error('Microphone is being used by another application. Please close other apps using the microphone and try again.');
+          } else {
+            throw new Error(`Microphone access failed: ${basicError.message}`);
           }
-        });
-        console.log('🎤 ✅ Microphone access granted with specific constraints');
+        }
       }
 
       // Log detailed track info for debugging

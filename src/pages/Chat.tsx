@@ -153,8 +153,12 @@ export default function Chat() {
         toast.success('Continuous listening started - I\'ll automatically detect when you speak and stop talking!');
       }
     } catch (error) {
-      toast.error('Microphone access failed');
+      console.error('Microphone access error:', error);
       setContinuousMode(false);
+      
+      // Show specific error message
+      const errorMessage = error instanceof Error ? error.message : 'Microphone access failed';
+      toast.error(errorMessage);
     }
   };
 
