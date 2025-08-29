@@ -191,24 +191,9 @@ export class AudioRecorder {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
 
-      // Check for available audio input devices
-      console.log('🎤 Checking for available audio input devices...');
-      try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const audioInputs = devices.filter(device => device.kind === 'audioinput');
-        console.log('🎤 Found audio input devices:', audioInputs.length);
-        
-        if (audioInputs.length === 0) {
-          throw new Error('No microphone devices found. Please connect a microphone and try again.');
-        }
-      } catch (devicesError) {
-        console.warn('🎤 Could not enumerate devices:', devicesError);
-        // Continue anyway, as some browsers may restrict device enumeration
-      }
-
       console.log('🎤 Requesting microphone access...');
       
-      // Try with minimal constraints first
+      // Try with minimal constraints first - let getUserMedia handle device detection
       try {
         this.stream = await navigator.mediaDevices.getUserMedia({
           audio: true
