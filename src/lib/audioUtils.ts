@@ -39,7 +39,7 @@ export class AudioPlayer {
     });
   }
 
-  async playAudio(base64Audio: string): Promise<void> {
+  async playAudio(base64Audio: string, onPlaybackStateChange?: (isPlaying: boolean) => void): Promise<void> {
     try {
       if (!this.audioElement) {
         throw new Error('Audio element not initialized');
@@ -63,16 +63,26 @@ export class AudioPlayer {
       // Set audio source and play
       this.audioElement.src = audioUrl;
       
+      // Notify playback started
+      onPlaybackStateChange?.(true);
+      
       await this.audioElement.play();
 
-      // Clean up blob URL when audio ends
+      // Clean up blob URL when audio ends and notify playback stopped
       this.audioElement.addEventListener('ended', () => {
         URL.revokeObjectURL(audioUrl);
+        onPlaybackStateChange?.(false);
+      }, { once: true });
+
+      // Also notify on pause/stop
+      this.audioElement.addEventListener('pause', () => {
+        onPlaybackStateChange?.(false);
       }, { once: true });
 
     } catch (error) {
       console.error('🔊 Error playing audio:', error);
       this.isPlaying = false;
+      onPlaybackStateChange?.(false);
       throw error;
     }
   }
@@ -108,6 +118,10 @@ export class AudioRecorder {
   private speechStartTime = 0;
   private speechBuffer: Float32Array[] = [];
   private isCapturingAudio = false;
+  
+  // Audio playback suppression to prevent feedback
+  private isAudioPlaybackActive = false;
+  private suppressionTimeout: NodeJS.Timeout | null = null;
 
   // Callbacks
   private onRecordingStateChange?: (isRecording: boolean) => void;
@@ -122,6 +136,40 @@ export class AudioRecorder {
     this.onRecordingStateChange = onRecordingStateChange;
     this.onSpeechActivityChange = onSpeechActivityChange;
     this.onTranscriptReady = onTranscriptReady;
+  }
+
+  // Method to suppress audio processing during playback
+  suppressDuringPlayback(duration: number = 3000) {
+    console.log('🎤 🔇 Suppressing microphone for', duration, 'ms during audio playback');
+    this.isAudioPlaybackActive = true;
+    
+    // Clear any existing timeout
+    if (this.suppressionTimeout) {
+      clearTimeout(this.suppressionTimeout);
+    }
+    
+    // Stop any active speech detection
+    if (this.isSpeaking) {
+      this.isSpeaking = false;
+      this.onSpeechActivityChange?.(false);
+      this.stopAudioCapture();
+    }
+    
+    // Set timeout to re-enable after playback
+    this.suppressionTimeout = setTimeout(() => {
+      console.log('🎤 ✅ Re-enabling microphone after playback');
+      this.isAudioPlaybackActive = false;
+    }, duration);
+  }
+
+  // Method to immediately re-enable microphone (for barge-in)
+  enableImmediately() {
+    console.log('🎤 ⚡ Immediately re-enabling microphone for barge-in');
+    this.isAudioPlaybackActive = false;
+    if (this.suppressionTimeout) {
+      clearTimeout(this.suppressionTimeout);
+      this.suppressionTimeout = null;
+    }
   }
 
   async startContinuousListening(): Promise<void> {
@@ -213,6 +261,15 @@ export class AudioRecorder {
 
     const checkVoiceActivity = () => {
       if (!this.analyser || !this.isContinuousMode) {
+        return;
+      }
+
+      // Skip processing if audio playback is active (prevent feedback)
+      if (this.isAudioPlaybackActive) {
+        // Continue VAD loop but don't process audio
+        if (this.isContinuousMode) {
+          this.vadCheckInterval = requestAnimationFrame(checkVoiceActivity);
+        }
         return;
       }
 
@@ -417,6 +474,12 @@ export class AudioRecorder {
     this.isContinuousMode = false;
     this.isRecording = false;
     this.isCapturingAudio = false;
+    this.isAudioPlaybackActive = false;
+
+    if (this.suppressionTimeout) {
+      clearTimeout(this.suppressionTimeout);
+      this.suppressionTimeout = null;
+    }
 
     if (this.vadCheckInterval) {
       cancelAnimationFrame(this.vadCheckInterval);

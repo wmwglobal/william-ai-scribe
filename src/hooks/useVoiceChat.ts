@@ -65,6 +65,8 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
     if (isSpeaking && isSpeechActive) {
       console.log('🛑 BARGE-IN: user speech detected during TTS playback. Stopping audio and cancelling in-flight turn.');
       audioPlayerRef.current?.stopCurrentAudio();
+      // Re-enable microphone immediately for barge-in
+      audioRecorderRef.current?.enableImmediately();
       // Invalidate current turn so any late responses are ignored
       turnIdRef.current += 1;
     }
@@ -319,10 +321,23 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
         
         // Stale turn? If user barged in, skip audio playback.
         if (myTurn !== undefined && myTurn !== turnIdRef.current) {
-          console.log('🔇 Skipping audio playback due to barge-in.');
+          console.log('🔇 Skipping audio playbook due to barge-in.');
           return;
         }
-        await audioPlayerRef.current.playAudio(agentResponse.audio_base64);
+        
+        // Suppress microphone during TTS playback to prevent feedback
+        const audioLength = agentResponse.audio_base64.length;
+        const estimatedDuration = Math.max(3000, (audioLength / 1000) * 50); // Rough estimate
+        audioRecorderRef.current?.suppressDuringPlayback(estimatedDuration);
+        
+        await audioPlayerRef.current.playAudio(agentResponse.audio_base64, (isPlaying) => {
+          if (!isPlaying) {
+            // Re-enable microphone when audio playback ends
+            setTimeout(() => {
+              audioRecorderRef.current?.enableImmediately();
+            }, 500); // Small delay to ensure audio output has fully stopped
+          }
+        });
         
         // Handle debug commands from TTS response
         if (agentResponse.debug_commands && agentResponse.debug_commands.length > 0 && isMountedRef.current) {
