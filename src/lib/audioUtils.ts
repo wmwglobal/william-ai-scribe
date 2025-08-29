@@ -200,10 +200,10 @@ export class AudioRecorder {
     const bufferLength = this.analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
 
-    // VAD thresholds - lowered for better sensitivity
-    const START_THRESH = Math.max(0.05, this.volumeThreshold * 5);
-    const STOP_THRESH = Math.max(0.02, this.volumeThreshold * 2);
-    const MIN_SPEECH_MS = 1000; // Reduced minimum speech duration
+    // VAD thresholds - balanced for reliable detection without false positives
+    const START_THRESH = Math.max(0.12, this.volumeThreshold * 12);
+    const STOP_THRESH = Math.max(0.06, this.volumeThreshold * 6);
+    const MIN_SPEECH_MS = 1500; // Minimum speech duration to avoid noise
     let speaking = false;
     let speechStartAt = 0;
     let lastAboveStopAt = 0;
