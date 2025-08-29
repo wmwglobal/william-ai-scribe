@@ -183,8 +183,6 @@ export class AudioRecorder {
 
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          sampleRate: 44100,
-          channelCount: 1,
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true
@@ -201,7 +199,7 @@ export class AudioRecorder {
       });
 
       // Set up audio context for VAD
-      this.audioContext = new AudioContext({ sampleRate: 44100 });
+      this.audioContext = new AudioContext();
       console.log('🎤 AudioContext state:', this.audioContext.state);
 
       if (this.audioContext.state === 'suspended') {
