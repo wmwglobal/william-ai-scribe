@@ -128,19 +128,24 @@ serve(async (req) => {
     const startTime = Date.now();
 
     // Decode base64 to binary
+    console.log('Decoding base64 audio, length:', audio_base64.length);
     const binaryString = atob(audio_base64);
     const bytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
       bytes[i] = binaryString.charCodeAt(i);
     }
+    console.log('Binary data created, size:', bytes.length);
 
     // Create blob and form data - try different audio format
     const audioBlob = new Blob([bytes], { type: 'audio/wav' });
+    console.log('Audio blob created, size:', audioBlob.size);
+    
     const formData = new FormData();
     formData.append('file', audioBlob, 'audio.wav');
     formData.append('model', 'whisper-large-v3-turbo');
     formData.append('response_format', 'json');
     formData.append('language', 'en');
+    console.log('FormData prepared');
 
     const groqApiKey = Deno.env.get('GROQ_API_KEY');
     if (!groqApiKey) {
@@ -152,6 +157,10 @@ serve(async (req) => {
     }
 
     // Call Groq's OpenAI-compatible audio transcriptions endpoint
+    console.log('About to call Groq API...');
+    console.log('API Key exists:', !!groqApiKey);
+    console.log('API Key length:', groqApiKey?.length || 0);
+    
     const groqResponse = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
@@ -160,11 +169,17 @@ serve(async (req) => {
       body: formData,
     });
 
+    console.log('Groq API response status:', groqResponse.status);
+    console.log('Groq API response ok:', groqResponse.ok);
+
     if (!groqResponse.ok) {
       const errorText = await groqResponse.text();
       console.error('Groq API error:', groqResponse.status, errorText);
       return new Response(
-        JSON.stringify({ error: 'Speech recognition failed' }),
+        JSON.stringify({ 
+          error: 'Speech recognition failed',
+          details: `Status: ${groqResponse.status}, Error: ${errorText}`
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
