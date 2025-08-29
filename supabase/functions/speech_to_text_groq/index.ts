@@ -138,7 +138,7 @@ serve(async (req) => {
     const audioBlob = new Blob([bytes], { type: 'audio/webm' });
     const formData = new FormData();
     formData.append('file', audioBlob, 'audio.webm');
-    formData.append('model', model || 'whisper-large-v3');
+    formData.append('model', model || 'whisper-large-v3-turbo');
     formData.append('response_format', 'json');
     
     // Add language parameter for better accuracy
@@ -181,7 +181,7 @@ serve(async (req) => {
       JSON.stringify({ 
         text: transcribedText,
         duration_ms: duration,
-        model: model || 'whisper-large-v3'
+        model: model || 'whisper-large-v3-turbo'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
