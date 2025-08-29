@@ -102,67 +102,12 @@ export const AuthGuard = ({ children, requiredRole = 'admin' }: AuthGuardProps) 
     );
   }
 
-  // Not authenticated
+  // Not authenticated - redirect to auth page
   if (!isAuthenticated) {
+    navigate('/auth');
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6">
-            <div className="text-center mb-6">
-              <Lock className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-              <h1 className="text-2xl font-bold">Admin Access Required</h1>
-              <p className="text-muted-foreground">
-                Please sign in to access the admin dashboard
-              </p>
-            </div>
-
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@example.com"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-
-              {error && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Signing in...' : 'Sign In'}
-              </Button>
-            </form>
-
-            <div className="mt-4 text-center">
-              <Button 
-                variant="ghost" 
-                onClick={() => navigate('/')}
-                className="text-sm"
-              >
-                ← Back to Home
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
       </div>
     );
   }
