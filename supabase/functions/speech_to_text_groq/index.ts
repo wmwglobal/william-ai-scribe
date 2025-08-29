@@ -138,13 +138,11 @@ serve(async (req) => {
     const audioBlob = new Blob([bytes], { type: 'audio/webm' });
     const formData = new FormData();
     formData.append('file', audioBlob, 'audio.webm');
-    formData.append('model', model || 'distil-whisper-large-v3-en');
+    formData.append('model', model || 'whisper-large-v3');
     formData.append('response_format', 'json');
     
-    // Only add language for English-only model
-    if (!model || model === 'distil-whisper-large-v3-en') {
-      formData.append('language', 'en');
-    }
+    // Add language parameter for better accuracy
+    formData.append('language', 'en');
 
     const groqApiKey = Deno.env.get('GROQ_API_KEY');
     if (!groqApiKey) {
@@ -183,7 +181,7 @@ serve(async (req) => {
       JSON.stringify({ 
         text: transcribedText,
         duration_ms: duration,
-        model: model || 'distil-whisper-large-v3-en'
+        model: model || 'whisper-large-v3'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
