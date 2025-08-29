@@ -196,30 +196,16 @@ export default function Chat() {
                 onModelChange={setSelectedModel}
               />
 
-              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                <span className="text-sm font-medium">Audio Enabled</span>
-                <Button
-                  variant={audioEnabled ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setAudioEnabled(!audioEnabled)}
-                >
-                  {audioEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-                </Button>
-              </div>
-              
-              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                <div>
-                  <span className="text-sm font-medium">Continuous Listening</span>
-                  <p className="text-xs text-muted-foreground">Auto-detect when you start and stop talking</p>
+              {/* Voice Instructions Card */}
+              <div className="bg-card/50 rounded-lg p-4 border border-primary/20">
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  <Mic className="w-5 h-5 text-primary" />
+                  <span className="font-medium text-foreground">Voice Chat Ready</span>
                 </div>
-                <Button
-                  variant={continuousMode ? "default" : "outline"}
-                  size="sm"
-                  onClick={handleContinuousToggle}
-                  disabled={!audioEnabled}
-                >
-                  {continuousMode ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
-                </Button>
+                <p className="text-sm text-muted-foreground text-center">
+                  Once you start the conversation, click the microphone button to begin talking with William. 
+                  He'll listen and respond with voice!
+                </p>
               </div>
             </div>
 
