@@ -66,20 +66,22 @@ serve(async (req) => {
   }
 
   try {
-    // Enhanced rate limiting with multiple identifiers
-    const forwarded = req.headers.get('x-forwarded-for');
-    const realIp = req.headers.get('x-real-ip');
-    const clientId = forwarded || realIp || 'unknown';
+    console.log('Function started successfully');
     
-    if (!checkRateLimit(clientId)) {
-      console.warn('Rate limit exceeded for client:', clientId);
-      return new Response('Rate limit exceeded. Please try again later.', { 
-        status: 429, 
-        headers: { ...responseHeaders, 'Retry-After': '60' }
-      });
+    // Parse request body
+    let requestBody;
+    try {
+      requestBody = await req.json();
+      console.log('Request body parsed successfully');
+    } catch (parseError) {
+      console.error('Failed to parse request body:', parseError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
-    
-    const { session_id, session_secret, audio_base64, model } = await req.json();
+
+    const { session_id, session_secret, audio_base64, model } = requestBody;
 
     console.log('Request received with session_id:', session_id);
     console.log('Audio base64 length:', audio_base64?.length || 0);
@@ -92,123 +94,12 @@ serve(async (req) => {
       );
     }
 
-    // Verify session using service role
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    const { data: session, error: sessionError } = await supabase
-      .from('sessions')
-      .select('id, session_secret, created_at')
-      .eq('id', session_id)
-      .eq('session_secret', session_secret)
-      .gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // 24h TTL
-      .single();
-
-    if (sessionError || !session) {
-      const errorMsg = sessionError?.message?.includes('No rows') ? 'Session expired, please start a new session' : 'Invalid session credentials';
-      console.error('Session verification failed:', sessionError?.message);
-      return new Response(
-        JSON.stringify({ error: errorMsg }),
-        { status: 401, headers: { 
-          'Access-Control-Allow-Origin': origin || '*',
-          'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-          'Content-Type': 'application/json' 
-        } }
-      );
-    }
-
-    console.log('Session verified successfully:', session_id);
-
-    // Check payload size (limit to 10MB base64 ≈ 7.5MB original)
-    if (audio_base64.length > 10 * 1024 * 1024) {
-      return new Response(
-        JSON.stringify({ error: 'Audio file too large. Maximum 10MB base64 allowed.' }),
-        { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const startTime = Date.now();
-
-    // Decode base64 to binary
-    const binaryString = atob(audio_base64);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-
-    // Create blob and form data
-    const audioBlob = new Blob([bytes], { type: 'audio/webm' });
-    const formData = new FormData();
-    formData.append('file', audioBlob, 'audio.webm');
-    formData.append('model', model || 'whisper-large-v3-turbo');
-    formData.append('response_format', 'json');
-    
-    // Add language parameter for better accuracy
-    formData.append('language', 'en');
-
-    const groqApiKey = Deno.env.get('GROQ_API_KEY');
-    console.log('GROQ_API_KEY exists:', !!groqApiKey);
-    console.log('GROQ_API_KEY length:', groqApiKey?.length || 0);
-    
-    if (!groqApiKey) {
-      console.error('GROQ_API_KEY not configured');
-      return new Response(
-        JSON.stringify({ error: 'ASR service not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('Making request to Groq with model:', model || 'whisper-large-v3-turbo');
-    console.log('Audio blob size:', audioBlob.size);
-    console.log('FormData entries:');
-    for (const [key, value] of formData.entries()) {
-      if (key === 'file') {
-        console.log(`  ${key}: [File object, size: ${(value as File).size}]`);
-      } else {
-        console.log(`  ${key}: ${value}`);
-      }
-    }
-
-    // Call Groq's OpenAI-compatible audio transcriptions endpoint
-    console.log('About to call Groq API...');
-    const groqResponse = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${groqApiKey}`,
-      },
-      body: formData,
-    });
-
-    console.log('Groq API response status:', groqResponse.status);
-    console.log('Groq API response headers:', Object.fromEntries(groqResponse.headers.entries()));
-
-    if (!groqResponse.ok) {
-      const errorText = await groqResponse.text();
-      console.error('Groq API error:', groqResponse.status, errorText);
-      
-      // Return more specific error information
-      return new Response(
-        JSON.stringify({ 
-          error: 'Speech recognition failed',
-          details: `API returned ${groqResponse.status}: ${errorText}`,
-          status: groqResponse.status
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const groqData = await groqResponse.json();
-    const transcribedText = groqData.text || '';
-
-    const duration = Date.now() - startTime;
-    console.log(`ASR completed in ${duration}ms, text length: ${transcribedText.length}, session: ${session_id}`); // Log without PII
-
+    // Test: Return a dummy response to see if we can get this far
+    console.log('Returning test response');
     return new Response(
       JSON.stringify({ 
-        text: transcribedText,
-        duration_ms: duration,
+        text: 'Test transcription - function is working',
+        duration_ms: 100,
         model: model || 'whisper-large-v3-turbo'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
