@@ -20,6 +20,8 @@ import { ModelSelector } from '@/components/ModelSelector';
 import { PersonalitySelector } from '@/components/PersonalitySelector';
 import { MoodRing } from '@/components/MoodRing';
 import { ConversationInsights } from '@/components/ConversationInsights';
+import { MemoryTimeline, Memory } from '@/components/MemoryTimeline';
+import { ActionCards, ActionItem } from '@/components/ActionCards';
 import { GROQ_MODELS, WILLIAM_PERSONALITIES, getDefaultModel, getDefaultPersonality } from '@/lib/models';
 import { getScoreBadgeVariant } from '@/lib/leadScore';
 import { getSessionAvatar } from '@/lib/avatarUtils';
@@ -55,6 +57,11 @@ export default function Chat() {
   const [sessionStarted, setSessionStarted] = useState(false);
   const [textInput, setTextInput] = useState('');
   const [autoInitiated, setAutoInitiated] = useState(false);
+  
+  // State for new features
+  const [memories, setMemories] = useState<Memory[]>([]);
+  const [actionItems, setActionItems] = useState<ActionItem[]>([]);
+  const [isRecallingMemory, setIsRecallingMemory] = useState(false);
 
   // Refs
   const transcriptEndRef = useRef<HTMLDivElement>(null);
@@ -74,8 +81,42 @@ export default function Chat() {
 
   // Listen for new extracts from the latest agent reply
   useEffect(() => {
-    // This would be updated by the voice chat hook if we had real-time extract updates
-    // For now, we'll use a simple approach
+    // Simulate memory creation when important things are discussed
+    if (latestExtract && latestExtract.company) {
+      const newMemory: Memory = {
+        id: Date.now().toString(),
+        content: `Discussed ${latestExtract.company} - ${latestExtract.role || 'role unspecified'}`,
+        summary: `User works at ${latestExtract.company}`,
+        importance: 7,
+        scope: 'short',
+        tags: ['work', 'company'],
+        timestamp: new Date(),
+        isNew: true
+      };
+      setMemories(prev => [...prev, newMemory]);
+    }
+    
+    // Simulate action item extraction
+    if (latestExtract && latestExtract.intent === 'consulting_inquiry') {
+      const newAction: ActionItem = {
+        id: Date.now().toString(),
+        text: 'Follow up on consulting inquiry',
+        owner: 'agent',
+        priority: 'high',
+        category: 'Business',
+        completed: false,
+        createdAt: new Date()
+      };
+      setActionItems(prev => [...prev, newAction]);
+    }
+  }, [latestExtract]);
+  
+  // Simulate memory recall
+  useEffect(() => {
+    if (transcript.length > 0 && transcript.length % 5 === 0) {
+      setIsRecallingMemory(true);
+      setTimeout(() => setIsRecallingMemory(false), 2000);
+    }
   }, [transcript]);
 
   // Intersection Observer for auto-scroll
@@ -166,6 +207,33 @@ export default function Chat() {
     if (isSpeaking) {
       stopSpeaking();
     }
+  };
+  
+  // Action item handlers
+  const handleActionComplete = (id: string) => {
+    setActionItems(prev => 
+      prev.map(action => 
+        action.id === id ? { ...action, completed: true, completedAt: new Date() } : action
+      )
+    );
+  };
+  
+  const handleActionSchedule = (id: string, date: string) => {
+    setActionItems(prev => 
+      prev.map(action => 
+        action.id === id ? { ...action, dueDate: date } : action
+      )
+    );
+    toast.success('Task scheduled!');
+  };
+  
+  const handleActionDelegate = (id: string, owner: string) => {
+    setActionItems(prev => 
+      prev.map(action => 
+        action.id === id ? { ...action, owner: owner as 'you' | 'agent' | 'prospect' } : action
+      )
+    );
+    toast.success('Task delegated!');
   };
 
   if (!sessionStarted) {
@@ -284,9 +352,20 @@ export default function Chat() {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full">
-        {/* Transcript */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 flex max-w-7xl mx-auto w-full">
+        {/* Left Sidebar - Memory Timeline */}
+        <div className="hidden lg:block w-80 border-r bg-background/50 p-4 overflow-y-auto">
+          <MemoryTimeline 
+            memories={memories}
+            currentSessionId={sessionId}
+            isRecalling={isRecallingMemory}
+            className="h-full"
+          />
+        </div>
+        
+        {/* Center - Chat Transcript */}
+        <div className="flex-1 flex flex-col">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {transcript.length === 0 ? (
             <div className="text-center text-muted-foreground py-8">
               <Brain className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -489,6 +568,19 @@ export default function Chat() {
               )}
             </div>
           </div>
+        </div>
+      </div>
+        
+        {/* Right Sidebar - Action Cards */}
+        <div className="hidden lg:block w-80 border-l bg-background/50 p-4 overflow-y-auto">
+          <ActionCards
+            actions={actionItems}
+            onComplete={handleActionComplete}
+            onSchedule={handleActionSchedule}
+            onDelegate={handleActionDelegate}
+            className="h-full"
+            showFloating={false}
+          />
         </div>
       </div>
     </div>
