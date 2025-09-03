@@ -1,73 +1,284 @@
-# Welcome to your Lovable project
+# William AI Scribe - Now Spec-Driven! 🚀
 
-## Project info
+## Overview
 
-**URL**: https://lovable.dev/projects/2e10a6c0-0b90-4a50-8d27-471a5969124f
+William AI Scribe is an AI-powered voice agent system that enables natural conversational interactions with multiple AI personalities. The project now uses **specification-driven development with AI agents** for rapid, high-quality feature implementation.
 
-## How can I edit this code?
+## 🎯 Spec-Driven Development
 
-There are several ways of editing your application.
+This project uses specification-driven development with AI agents for implementation.
 
-**Use Lovable**
+### Quick Start for AI Development
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/2e10a6c0-0b90-4a50-8d27-471a5969124f) and start prompting.
+1. **Check specifications** in `specs/specification.md` for product requirements
+2. **Review technical plan** in `specs/plan.md` for implementation approach  
+3. **Pick a task** from `specs/tasks/backlog/`
+4. **Implement** following `specs/context/` guidelines
+5. **Validate** using `specs/validations/`
 
-Changes made via Lovable will be committed automatically to this repo.
+### For Human Developers
 
-**Use your preferred IDE**
+- Specifications are the source of truth
+- Update specs before changing code
+- Use AI agents for implementation when possible
+- Focus on specification quality and validation
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Available Commands
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+```bash
+# Task management
+python scripts/spec_manager.py list --status backlog
+python scripts/spec_manager.py show TASK-001
+python scripts/spec_manager.py move TASK-001 in-progress
+python scripts/spec_manager.py report
 
-Follow these steps:
+# Development
+npm run dev        # Start development server
+npm run build      # Build for production
+npm run lint       # Run linter
+npm test          # Run tests (once configured)
+```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
+## 📁 Project Structure
+
+```
+william-ai-scribe/
+├── src/                    # Application source code
+│   ├── pages/             # Main application pages
+│   ├── components/        # React components
+│   ├── hooks/            # Custom React hooks
+│   ├── lib/              # Business logic & utilities
+│   └── integrations/     # External service integrations
+├── supabase/              # Backend services
+│   ├── functions/        # Edge Functions
+│   └── migrations/       # Database migrations
+├── specs/                 # 📋 SPECIFICATIONS (Start Here!)
+│   ├── specification.md  # Product requirements
+│   ├── plan.md          # Technical implementation
+│   ├── context/         # Development guidelines
+│   ├── tasks/           # Implementation tasks
+│   └── validations/     # Quality checklists
+├── docs/                  # Documentation
+│   └── analysis/        # Project analysis
+├── scripts/              # Automation scripts
+│   └── spec_manager.py  # Task management tool
+└── .claude/              # AI agent instructions
+    └── workflow.md      # AI implementation guide
+```
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js & npm - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- Supabase account for backend services
+- API keys for Groq, ElevenLabs, OpenAI (in Supabase dashboard)
+
+### Installation
+
+```bash
+# Clone the repository
 git clone <YOUR_GIT_URL>
+cd william-ai-scribe
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Install dependencies
+npm install
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Set up environment variables
+cp .env.example .env.local
+# Edit .env.local with your Supabase credentials
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Environment Variables
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Create `.env.local` with:
+```
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_anon_key
+```
 
-**Use GitHub Codespaces**
+Configure Edge Function secrets in Supabase dashboard:
+- `GROQ_API_KEY`
+- `ELEVENLABS_API_KEY`
+- `OPENAI_API_KEY`
+- `DEEPGRAM_API_KEY`
+- `SLACK_WEBHOOK_URL`
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 💡 Core Features
 
-## What technologies are used for this project?
+### Voice Chat System
+- Real-time voice conversations with AI
+- Speech-to-text and text-to-speech
+- Barge-in support (interrupt AI mid-speech)
+- Multiple AI personalities
 
-This project is built with:
+### Lead Scoring Engine
+- Automatic lead qualification (0-100 score)
+- Intent and entity extraction
+- Slack notifications for high-value leads
+- Detailed scoring reasons
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### AI Personalities
+- **Entrepreneur**: Strategic business focus
+- **Professional**: Technical deep dives
+- **Casual**: Friendly conversation
+- **Pirate**: Adventure-themed interaction
+- **Coach**: Mentoring and guidance
 
-## How can I deploy this project?
+### Admin Dashboard
+- Real-time conversation monitoring
+- Lead score visualization
+- Export functionality
+- Analytics and insights
 
+## 🛠 Technology Stack
+
+- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS
+- **UI Components**: shadcn/ui (Radix UI)
+- **Backend**: Supabase (PostgreSQL, Edge Functions, Realtime)
+- **AI Services**: Groq (LLM & STT), ElevenLabs (TTS), OpenAI (Embeddings)
+- **State Management**: React Query, Custom Hooks
+
+## 📋 Development Workflow
+
+### Working on a Task
+
+1. **Find a task**:
+   ```bash
+   python scripts/spec_manager.py list --status backlog
+   ```
+
+2. **View task details**:
+   ```bash
+   python scripts/spec_manager.py show TASK-001
+   ```
+
+3. **Start work**:
+   ```bash
+   python scripts/spec_manager.py move TASK-001 in-progress
+   ```
+
+4. **Implement** following the task specification
+
+5. **Validate** your implementation against acceptance criteria
+
+6. **Complete**:
+   ```bash
+   python scripts/spec_manager.py move TASK-001 completed
+   ```
+
+### AI Agent Usage
+
+For AI agents (Claude Code, GitHub Copilot):
+```bash
+# Generate implementation prompt for a task
+python scripts/spec_manager.py prompt TASK-001
+
+# The AI should then:
+# 1. Read the task specification
+# 2. Review context files
+# 3. Implement following guidelines
+# 4. Validate implementation
+```
+
+## 🧪 Testing
+
+Testing framework setup is the first priority task (TASK-001):
+
+```bash
+# Once configured:
+npm test              # Run tests in watch mode
+npm run test:run      # Run tests once
+npm run test:coverage # Generate coverage report
+```
+
+Current coverage: 0% → Target: 80%
+
+## 📈 Migration Status
+
+The project is transitioning to spec-driven development:
+
+- ✅ **Phase 1**: Foundation (Complete)
+  - Specifications extracted
+  - Task system created
+  - AI workflows defined
+  
+- 🚧 **Phase 2**: Implementation (In Progress)
+  - Testing framework setup
+  - Initial test coverage
+  - Error boundaries
+  
+- 📅 **Phase 3**: Scale (Upcoming)
+  - Expand test coverage
+  - TypeScript improvements
+  - Performance optimization
+
+See [MIGRATION_PLAN.md](./MIGRATION_PLAN.md) for details.
+
+## 📚 Documentation
+
+- **Specifications**: [`specs/specification.md`](./specs/specification.md)
+- **Technical Plan**: [`specs/plan.md`](./specs/plan.md)
+- **AI Instructions**: [`CLAUDE.md`](./CLAUDE.md)
+- **Migration Plan**: [`MIGRATION_PLAN.md`](./MIGRATION_PLAN.md)
+- **Task List**: [`specs/tasks/README.md`](./specs/tasks/README.md)
+
+## 🤝 Contributing
+
+1. **Pick a task** from the backlog
+2. **Follow specifications** exactly
+3. **Write tests** for your code
+4. **Update documentation** as needed
+5. **Submit PR** with task reference
+
+See [`.claude/workflow.md`](./.claude/workflow.md) for AI agent guidelines.
+
+## 🚢 Deployment
+
+### Development Build
+```bash
+npm run build:dev
+```
+
+### Production Build
+```bash
+npm run build
+```
+
+### Using Lovable Platform
 Simply open [Lovable](https://lovable.dev/projects/2e10a6c0-0b90-4a50-8d27-471a5969124f) and click on Share -> Publish.
 
-## Can I connect a custom domain to my Lovable project?
+### Custom Domain
+To connect a domain, navigate to Project > Settings > Domains in Lovable.
 
-Yes, you can!
+## 📊 Project Info
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+- **Lovable URL**: https://lovable.dev/projects/2e10a6c0-0b90-4a50-8d27-471a5969124f
+- **Origin**: Created with Lovable.dev for rapid AI-assisted development
+- **Status**: Active development with spec-driven approach
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## 🔒 Security
+
+- API keys stored securely in Supabase
+- Session-based authentication
+- Input validation on all endpoints
+- No sensitive data in client code
+
+## 📝 License
+
+Private project - See LICENSE file for details.
+
+## 🆘 Support
+
+For issues or questions:
+1. Check the specifications in `/specs/`
+2. Review existing tasks in `/specs/tasks/`
+3. Consult the technical plan in `/specs/plan.md`
+4. Create an issue with clear description
+
+---
+
+**Built with AI-Assisted Spec-Driven Development** 🤖

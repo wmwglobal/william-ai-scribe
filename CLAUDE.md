@@ -26,6 +26,12 @@ npm run lint
 
 # Preview production build
 npm run preview
+
+# Run tests
+npm test              # Watch mode
+npm run test:run      # Run once
+npm run test:ui       # Interactive UI
+npm run test:coverage # Coverage report
 ```
 
 ## Architecture
@@ -130,7 +136,33 @@ Key tables include:
 
 ## Testing
 
-No test framework is currently configured. The project focuses on rapid prototyping with manual testing through the development server.
+The project uses Vitest for unit and integration testing with React Testing Library for component testing.
+
+### Test Setup
+- **Framework**: Vitest with jsdom environment
+- **Component Testing**: React Testing Library
+- **Coverage**: V8 coverage reporter
+- **Test Files**: `*.test.ts` and `*.test.tsx` files
+- **Test Utilities**: Available in `/src/test/test-utils.tsx`
+
+### Running Tests
+```bash
+npm test              # Run tests in watch mode
+npm run test:run      # Run tests once
+npm run test:ui       # Open Vitest UI
+npm run test:coverage # Generate coverage report
+```
+
+### Current Coverage
+- Lead Scoring: 95.77%
+- Button Component: 100%
+- Overall: Growing from 0% baseline
+
+### Writing Tests
+Tests should follow the patterns established in:
+- `/src/lib/leadScore.test.ts` - Unit testing example
+- `/src/components/ui/button.test.tsx` - Component testing example
+- Use test utilities from `/src/test/test-utils.tsx` for consistent setup
 
 ## Important Notes
 
