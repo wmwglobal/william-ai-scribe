@@ -18,37 +18,37 @@ export interface Personality {
 export const GROQ_MODELS: GroqModel[] = [
   {
     id: 'llama-3.3-70b-versatile',
-    name: 'GPT OSS 120B 128k',
-    description: 'High-performance open source model with 128k context',
+    name: 'Llama 3.3 70B Versatile',
+    description: 'Latest Llama model with enhanced reasoning capabilities',
     contextLength: '128k',
     color: 'from-blue-500 to-purple-600'
   },
   {
-    id: 'llama-3.1-70b-versatile',
-    name: 'Llama 3.1 70B',
-    description: 'Versatile large language model for complex reasoning',
+    id: 'openai/gpt-oss-120b',
+    name: 'GPT OSS 120B',
+    description: 'High-performance open source model with 128k context',
     contextLength: '128k',
     color: 'from-green-500 to-teal-600'
+  },
+  {
+    id: 'qwen/qwen3-32b',
+    name: 'Qwen3 32B',
+    description: 'Advanced Chinese-English bilingual model',
+    contextLength: '32k',
+    color: 'from-orange-500 to-red-600'
+  },
+  {
+    id: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+    name: 'Llama 4 Maverick 17B',
+    description: 'Latest Llama 4 model with enhanced instruction following',
+    contextLength: '128k',
+    color: 'from-purple-500 to-pink-600'
   },
   {
     id: 'llama-3.1-8b-instant',
     name: 'Llama 3.1 8B Instant',
     description: 'Fast and efficient model for quick responses',
     contextLength: '128k',
-    color: 'from-orange-500 to-red-600'
-  },
-  {
-    id: 'mixtral-8x7b-32768',
-    name: 'Mixtral 8x7B',
-    description: 'Mixture of experts model for diverse tasks',
-    contextLength: '32k',
-    color: 'from-purple-500 to-pink-600'
-  },
-  {
-    id: 'gemma2-9b-it',
-    name: 'Gemma2 9B',
-    description: 'Google\'s efficient instruction-tuned model',
-    contextLength: '8k',
     color: 'from-cyan-500 to-blue-600'
   }
 ];

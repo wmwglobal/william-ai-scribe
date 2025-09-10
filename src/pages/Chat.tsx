@@ -70,7 +70,7 @@ export default function Chat() {
     completeActionItem,
     scheduleActionItem,
     delegateActionItem
-  } = useVoiceChat(audioEnabled, 'distil-whisper-large-v3-en', selectedPersonality, podcastModeEnabled);
+  } = useVoiceChat(audioEnabled, 'distil-whisper-large-v3-en', selectedPersonality, podcastModeEnabled, selectedModel);
 
   // Podcast mode hook with voice chat integration
   const podcastMode = usePodcastMode(sessionId || '', {

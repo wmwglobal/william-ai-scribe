@@ -6,7 +6,7 @@ import { useMemories } from './useMemories';
 import { useActionItems } from './useActionItems';
 import { EnhancedVAD, OptimizedAudioQueue, ResponseOptimizer, FAST_RESPONSE_CONFIG } from '@/lib/voiceOptimizations';
 
-export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'distil-whisper-large-v3-en', personality?: any, isPerformerMode: boolean = false) {
+export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'distil-whisper-large-v3-en', personality?: any, isPerformerMode: boolean = false, selectedModel?: any) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionSecret, setSessionSecret] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -69,6 +69,7 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
           session_id: sessionId,
           session_secret: sessionSecret,
           user_message: `${selectedPrompt} [PROACTIVE_FOLLOWUP: true]`,
+          model: selectedModel?.id || 'llama-3.3-70b-versatile',
           context: {
             recent_messages: recentMessages.map(m => `${m.speaker}: ${m.text}`),
             is_followup: true,
@@ -650,7 +651,8 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
           user_message: userMessage,
           session_secret: sessionSecret,
           mode: personality?.id,
-          is_performer_mode: isPerformerMode
+          is_performer_mode: isPerformerMode,
+          model: selectedModel?.id || 'llama-3.3-70b-versatile'
         }
       });
 

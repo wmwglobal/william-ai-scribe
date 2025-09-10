@@ -46,7 +46,7 @@ function checkRateLimit(clientId: string): boolean {
   return true;
 }
 
-async function callGroqChat(messages: any[], model: string = 'gpt-oss-20b', systemPrompt: string, sessionId: string, supabase: any) {
+async function callGroqChat(messages: any[], model: string = 'llama-3.3-70b-versatile', systemPrompt: string, sessionId: string, supabase: any) {
   const response = await supabase.functions.invoke('groq_chat', {
     body: {
       messages,
@@ -481,7 +481,7 @@ serve(async (req) => {
         headers: { ...dynamicCorsHeaders, 'Retry-After': '60' }
       });
     }
-    const { session_id, user_message, session_secret, mode, is_performer_mode } = await req.json();
+    const { session_id, user_message, session_secret, mode, is_performer_mode, model } = await req.json();
     
     if (!session_id || !user_message || !session_secret) {
       return new Response(JSON.stringify({ error: 'session_id, user_message, and session_secret required' }), {
@@ -705,7 +705,7 @@ IMPORTANT: This is the first message. Be casual and conversational like you're m
     } catch (openaiError) {
       console.error('OpenAI error, falling back to Groq:', openaiError);
       // Fallback to Groq for response generation
-      const groqResponse = await callGroqChat(messages, 'gpt-oss-20b', contextualPrompt, session_id, supabase);
+      const groqResponse = await callGroqChat(messages, model || 'llama-3.3-70b-versatile', contextualPrompt, session_id, supabase);
       agentText = groqResponse.text;
     }
 
