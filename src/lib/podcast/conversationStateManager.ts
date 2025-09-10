@@ -431,7 +431,7 @@ export class ConversationStateManager extends EventEmitter {
       console.log('Show memory saved locally:', memory);
       return memory;
       
-      /* TODO: Enable when show_memories table is deployed
+      // Save to database
       const { error } = await supabase
         .from('show_memories')
         .insert({
@@ -462,7 +462,7 @@ export class ConversationStateManager extends EventEmitter {
       this.emit('show-memory-loaded', this.showMemory);
       return;
       
-      /* TODO: Enable when show_memories table is deployed
+      // Load from database  
       const { data, error } = await supabase
         .from('show_memories')
         .select('*')

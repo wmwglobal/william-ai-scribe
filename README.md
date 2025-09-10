@@ -10,11 +10,11 @@ This project uses specification-driven development with AI agents for implementa
 
 ### Quick Start for AI Development
 
-1. **Check specifications** in `specs/specification.md` for product requirements
-2. **Review technical plan** in `specs/plan.md` for implementation approach  
-3. **Pick a task** from `specs/tasks/backlog/`
-4. **Implement** following `specs/context/` guidelines
-5. **Validate** using `specs/validations/`
+1. **Check specifications** in `docs/architecture/specs/specification.md` for product requirements
+2. **Review technical plan** in `docs/architecture/specs/plan.md` for implementation approach  
+3. **Pick a task** from `docs/architecture/specs/tasks/backlog/`
+4. **Implement** following `docs/architecture/specs/context/` guidelines
+5. **Validate** using `docs/architecture/specs/validations/`
 
 ### For Human Developers
 
@@ -52,14 +52,12 @@ william-ai-scribe/
 ├── supabase/              # Backend services
 │   ├── functions/        # Edge Functions
 │   └── migrations/       # Database migrations
-├── specs/                 # 📋 SPECIFICATIONS (Start Here!)
-│   ├── specification.md  # Product requirements
-│   ├── plan.md          # Technical implementation
-│   ├── context/         # Development guidelines
-│   ├── tasks/           # Implementation tasks
-│   └── validations/     # Quality checklists
-├── docs/                  # Documentation
-│   └── analysis/        # Project analysis
+├── docs/                  # 📚 DOCUMENTATION (Organized!)
+│   ├── setup/           # Installation & configuration guides
+│   ├── development/     # Development plans & roadmaps  
+│   ├── architecture/    # System architecture & specs
+│   ├── troubleshooting/ # Debugging & performance guides
+│   └── deprecated/      # Old files (for reference)
 ├── scripts/              # Automation scripts
 │   └── spec_manager.py  # Task management tool
 └── .claude/              # AI agent instructions
@@ -141,6 +139,16 @@ Configure Edge Function secrets in Supabase dashboard:
 - **Backend**: Supabase (PostgreSQL, Edge Functions, Realtime)
 - **AI Services**: Groq (LLM & STT), ElevenLabs (TTS), OpenAI (Embeddings)
 - **State Management**: React Query, Custom Hooks
+
+## 📚 Documentation
+
+**[📖 Full Documentation →](docs/README.md)**
+
+### Quick Links
+- **[Setup Guides](docs/setup/)** - Installation & configuration
+- **[Development](docs/development/)** - Plans & roadmaps
+- **[Architecture](docs/architecture/)** - System design & specs  
+- **[Troubleshooting](docs/troubleshooting/)** - Debugging & performance
 
 ## 📋 Development Workflow
 

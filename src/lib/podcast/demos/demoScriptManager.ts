@@ -102,7 +102,7 @@ export class DemoScriptManager {
       this.embeddings.set(script.id, contextEmbedding);
       return;
       
-      /* TODO: Enable when generate_embeddings Edge Function is deployed
+      // Generate embeddings using Edge Function
       const { data, error } = await supabase.functions.invoke('generate_embeddings', {
         body: {
           texts: [
@@ -551,7 +551,7 @@ export class DemoScriptManager {
         metadata: { tags: [], triggers: [] }
       } as DemoScript);
       
-      /* TODO: Enable when generate_embeddings Edge Function is deployed
+      // Generate embeddings using Edge Function
       const { data } = await supabase.functions.invoke('generate_embeddings', {
         body: { texts: [context] }
       });
