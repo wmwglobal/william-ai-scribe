@@ -23,7 +23,7 @@ export class EnhancedDynamicPromptSystem extends DynamicPromptSystem {
   private async initializeDemoSystem() {
     try {
       // Load demos from file if available
-      const response = await fetch('/src/lib/podcast/demos/essential-demos.txt');
+      const response = await fetch('/demos/essential-demos.txt');
       if (response.ok) {
         const text = await response.text();
         await demoSystem.loadFromText(text);
