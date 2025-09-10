@@ -63,25 +63,57 @@ function getCorsHeaders(request: Request): Record<string, string> {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const openaiApiKey = Deno.env.get('OPENAI_API_KEY')!;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 async function generateEmbedding(text: string): Promise<number[]> {
-  const response = await fetch('https://api.openai.com/v1/embeddings', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openaiApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'text-embedding-3-small',
-      input: text,
-    }),
-  });
+  try {
+    // Use the updated generate_embeddings Edge Function
+    const response = await supabase.functions.invoke('generate_embeddings', {
+      body: { texts: [text] }
+    });
 
-  const data = await response.json();
-  return data.data[0].embedding;
+    if (response.error) {
+      console.warn('generate_embeddings function failed, using fallback:', response.error);
+      return generateFallbackEmbedding(text);
+    }
+
+    // Handle new response format with provider info
+    if (response.data?.embeddings?.[0]) {
+      const embedding = response.data.embeddings[0];
+      const provider = response.data.provider || 'unknown';
+      const dimensions = response.data.dimensions || embedding.length;
+      
+      console.log(`Generated embedding using ${provider} (${dimensions}d)`);
+      return embedding;
+    }
+
+    console.warn('No embedding returned from generate_embeddings, using fallback');
+    return generateFallbackEmbedding(text);
+  } catch (error) {
+    console.warn('Error calling generate_embeddings function, using fallback:', error);
+    return generateFallbackEmbedding(text);
+  }
+}
+
+// Simple fallback embedding generation
+function generateFallbackEmbedding(text: string): number[] {
+  // Default to HuggingFace dimensions (1024) or fallback to OpenAI (1536)
+  const embeddingProvider = Deno.env.get('EMBEDDING_PROVIDER') || 'huggingface';
+  const dimensions = embeddingProvider === 'huggingface' ? 1024 : 1536;
+  
+  const vector = new Array(dimensions).fill(0);
+  const words = text.toLowerCase().split(/\s+/);
+  
+  words.forEach((word, i) => {
+    const hash = word.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const index = hash % dimensions;
+    vector[index] = Math.sin(hash + i) * 0.5 + 0.5;
+  });
+  
+  // Normalize the vector
+  const magnitude = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
+  return magnitude > 0 ? vector.map(val => val / magnitude) : vector;
 }
 
 serve(async (req) => {
@@ -152,15 +184,16 @@ serve(async (req) => {
 
     // Generate embedding for the query
     const queryEmbedding = await generateEmbedding(query);
+    const embeddingProvider = Deno.env.get('EMBEDDING_PROVIDER') || 'huggingface';
 
     // SECURITY: Only filter by validated session_id - never trust client-provided user_id or visitor_id
     const recallQuery = supabase
       .from('memories')
-      .select('*')
+      .select('*, embedding_provider, embedding_hf')
       .eq('session_id', session_id)
       .in('scope', scopes)
       .order('importance', { ascending: false })
-      .limit(limit);
+      .limit(limit * 2); // Get more to allow for filtering by compatible embeddings
 
     const { data: memories, error } = await recallQuery;
 
@@ -172,14 +205,32 @@ serve(async (req) => {
       });
     }
 
-    // Calculate semantic similarity for memories with embeddings
+    // Calculate semantic similarity for memories with compatible embeddings
     const memoriesWithSimilarity = memories?.map(memory => {
-      if (memory.embedding && queryEmbedding) {
-        // Calculate cosine similarity
-        const similarity = calculateCosineSimilarity(queryEmbedding, memory.embedding);
-        return { ...memory, similarity };
+      let memoryEmbedding = null;
+      let similarity = memory.importance / 10; // Default fallback to importance-based ranking
+      
+      // Determine which embedding to use based on current provider and available embeddings
+      if (embeddingProvider === 'huggingface' && memory.embedding_hf) {
+        memoryEmbedding = memory.embedding_hf;
+      } else if (embeddingProvider === 'openai' && memory.embedding) {
+        memoryEmbedding = memory.embedding;
+      } else if (memory.embedding_hf) {
+        // Fallback to HuggingFace if available
+        memoryEmbedding = memory.embedding_hf;
+      } else if (memory.embedding) {
+        // Fallback to OpenAI if available
+        memoryEmbedding = memory.embedding;
       }
-      return { ...memory, similarity: memory.importance / 10 }; // Fallback to importance-based ranking
+      
+      // Only calculate similarity if embeddings are compatible (same dimensions)
+      if (memoryEmbedding && queryEmbedding && memoryEmbedding.length === queryEmbedding.length) {
+        similarity = calculateCosineSimilarity(queryEmbedding, memoryEmbedding);
+      } else if (memoryEmbedding && queryEmbedding) {
+        console.warn(`Dimension mismatch: query(${queryEmbedding.length}) vs memory(${memoryEmbedding.length})`);
+      }
+      
+      return { ...memory, similarity, embedding_used: memoryEmbedding ? 'vector' : 'importance' };
     }) || [];
 
     // Sort by similarity and importance

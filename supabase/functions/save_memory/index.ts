@@ -67,55 +67,58 @@ function getCorsHeaders(request: Request): Record<string, string> {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const openaiApiKey = Deno.env.get('OPENAI_API_KEY'); // Optional, will use fallback
+const groqApiKey = Deno.env.get('GROQ_API_KEY'); // Use Groq for embeddings
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 async function generateEmbedding(text: string): Promise<number[]> {
   try {
-    if (!openaiApiKey) {
-      console.warn('OpenAI API key not configured, using fallback embedding');
-      return generateFallbackEmbedding(text);
-    }
-
-    const response = await fetch('https://api.openai.com/v1/embeddings', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'text-embedding-3-small',
-        input: text,
-      }),
+    // Use the updated generate_embeddings Edge Function
+    const response = await supabase.functions.invoke('generate_embeddings', {
+      body: { texts: [text] }
     });
 
-    if (!response.ok) {
-      console.warn('OpenAI embedding request failed, using fallback');
+    if (response.error) {
+      console.warn('generate_embeddings function failed, using fallback:', response.error);
       return generateFallbackEmbedding(text);
     }
 
-    const data = await response.json();
-    return data.data[0].embedding;
+    // Handle new response format with provider info
+    if (response.data?.embeddings?.[0]) {
+      const embedding = response.data.embeddings[0];
+      const provider = response.data.provider || 'unknown';
+      const dimensions = response.data.dimensions || embedding.length;
+      
+      console.log(`Generated embedding using ${provider} (${dimensions}d)`);
+      return embedding;
+    }
+
+    console.warn('No embedding returned from generate_embeddings, using fallback');
+    return generateFallbackEmbedding(text);
   } catch (error) {
-    console.warn('Error generating OpenAI embedding, using fallback:', error);
+    console.warn('Error calling generate_embeddings function, using fallback:', error);
     return generateFallbackEmbedding(text);
   }
 }
 
 // Simple fallback embedding generation
 function generateFallbackEmbedding(text: string): number[] {
-  // Generate a simple hash-based embedding for fallback
-  const vector = new Array(1536).fill(0); // OpenAI embedding size
+  // Default to HuggingFace dimensions (1024) or fallback to OpenAI (1536)
+  const embeddingProvider = Deno.env.get('EMBEDDING_PROVIDER') || 'huggingface';
+  const dimensions = embeddingProvider === 'huggingface' ? 1024 : 1536;
   
-  for (let i = 0; i < text.length; i++) {
-    const char = text.charCodeAt(i);
-    vector[i % 1536] += char;
-  }
+  const vector = new Array(dimensions).fill(0);
+  const words = text.toLowerCase().split(/\s+/);
+  
+  words.forEach((word, i) => {
+    const hash = word.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const index = hash % dimensions;
+    vector[index] = Math.sin(hash + i) * 0.5 + 0.5;
+  });
   
   // Normalize the vector
   const magnitude = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
-  return vector.map(val => magnitude > 0 ? val / magnitude : 0);
+  return magnitude > 0 ? vector.map(val => val / magnitude) : vector;
 }
 
 serve(async (req) => {
@@ -195,21 +198,35 @@ serve(async (req) => {
     // Generate embedding for the summary or content
     const textForEmbedding = summary || (typeof content === 'string' ? content : JSON.stringify(content));
     const embedding = await generateEmbedding(textForEmbedding);
+    
+    // Determine embedding provider and column
+    const embeddingProvider = Deno.env.get('EMBEDDING_PROVIDER') || 'huggingface';
+    const isHuggingFace = embeddingProvider === 'huggingface';
+    
+    // Prepare memory data with appropriate embedding column
+    const memoryData: any = {
+      session_id,
+      user_id,
+      visitor_id,
+      scope,
+      content,
+      summary,
+      importance,
+      tags,
+      embedding_provider: embeddingProvider,
+    };
+    
+    // Set the appropriate embedding column based on provider
+    if (isHuggingFace) {
+      memoryData.embedding_hf = embedding;
+    } else {
+      memoryData.embedding = embedding;
+    }
 
     // Save the memory
     const { data: memory, error } = await supabase
       .from('memories')
-      .insert({
-        session_id,
-        user_id,
-        visitor_id,
-        scope,
-        content,
-        summary,
-        importance,
-        tags,
-        embedding,
-      })
+      .insert(memoryData)
       .select()
       .single();
 
