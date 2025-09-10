@@ -431,7 +431,7 @@ export class ConversationStateManager extends EventEmitter {
       console.log('Show memory saved locally:', memory);
       return memory;
       
-      // Save to database
+      /* Save to database
       const { error } = await supabase
         .from('show_memories')
         .insert({
@@ -440,7 +440,6 @@ export class ConversationStateManager extends EventEmitter {
           memory_data: memory,
           created_at: new Date().toISOString()
         });
-      */
 
       if (!error) {
         this.showMemory.push(memory);
@@ -448,6 +447,7 @@ export class ConversationStateManager extends EventEmitter {
       } else {
         console.error('Failed to save show memory:', error);
       }
+      */
     } catch (err) {
       console.error('Error saving show memory:', err);
     }
@@ -462,7 +462,7 @@ export class ConversationStateManager extends EventEmitter {
       this.emit('show-memory-loaded', this.showMemory);
       return;
       
-      // Load from database  
+      /* Load from database  
       const { data, error } = await supabase
         .from('show_memories')
         .select('*')

@@ -90,15 +90,6 @@ export class AudioPlayer {
     }
   }
 
-  stopCurrentAudio(): void {
-    if (this.audioElement && this.isPlaying) {
-      this.audioElement.pause();
-      this.audioElement.currentTime = 0;
-      this.isPlaying = false;
-      console.log('🔊 Audio stopped');
-    }
-  }
-
   getIsPlaying(): boolean {
     return this.isPlaying || (this.comedyPlayer?.getIsPlaying() ?? false);
   }
