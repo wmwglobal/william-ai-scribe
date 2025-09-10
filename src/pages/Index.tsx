@@ -80,9 +80,6 @@ const Index = () => {
               <span className="font-bold text-lg">William MacDonald White</span>
             </div>
             <nav className="hidden md:flex items-center gap-6">
-              <Link to="/personalities" className="text-muted-foreground hover:text-foreground transition-colors">
-                Personalities
-              </Link>
               <Link to="/admin" className="text-muted-foreground hover:text-foreground transition-colors">
                 Dashboard
               </Link>
@@ -101,7 +98,7 @@ const Index = () => {
             {/* Left Column - Text Content */}
             <div className="text-center lg:text-left text-white">
               <Badge variant="secondary" className="mb-6 text-primary bg-white/20">
-                Adaptive Personalities • Philosophical Depth • Memory • Voice
+                Philosophical Depth • Memory • Voice
               </Badge>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
                 Meet AI William
@@ -115,12 +112,6 @@ const Index = () => {
                   <Button size="lg" className="w-full sm:w-auto shadow-glow bg-white text-primary hover:bg-white/90">
                     <Brain className="w-5 h-5 mr-2" />
                     Start Conversation
-                  </Button>
-                </Link>
-                <Link to="/personalities">
-                  <Button variant="outline" size="lg" className="w-full sm:w-auto bg-white/10 border-white/20 text-white hover:bg-white/20">
-                    <Sparkles className="w-5 h-5 mr-2" />
-                    See Personalities
                   </Button>
                 </Link>
               </div>
@@ -152,22 +143,11 @@ const Index = () => {
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Next-Generation AI Conversation System</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Adaptive personalities, philosophical depth, comedy timing, and cumulative memory create conversations that feel genuinely human.
+              Philosophical depth, comedy timing, and cumulative memory create conversations that feel genuinely human.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <Card className="shadow-card">
-              <CardContent className="p-6">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <Sparkles className="w-6 h-6 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Adaptive AI Personalities</h3>
-                <p className="text-muted-foreground">
-                  Dynamic personality system with Entrepreneur, Professional, Mentor, Storyteller, Futurist, and Interviewer modes that adapt to conversation context.
-                </p>
-              </CardContent>
-            </Card>
 
             <Card className="shadow-card">
               <CardContent className="p-6">
@@ -428,7 +408,6 @@ const Index = () => {
             </div>
             <nav className="flex items-center gap-6 text-sm text-muted-foreground">
               <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
-              <Link to="/personalities" className="hover:text-foreground transition-colors">Personalities</Link>
               <Link to="/admin" className="hover:text-foreground transition-colors">Dashboard</Link>
               <span>© 2025 WMW Global Technologies Inc. All rights reserved.</span>
             </nav>
