@@ -67,25 +67,55 @@ function getCorsHeaders(request: Request): Record<string, string> {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const openaiApiKey = Deno.env.get('OPENAI_API_KEY')!;
+const openaiApiKey = Deno.env.get('OPENAI_API_KEY'); // Optional, will use fallback
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 async function generateEmbedding(text: string): Promise<number[]> {
-  const response = await fetch('https://api.openai.com/v1/embeddings', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openaiApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'text-embedding-3-small',
-      input: text,
-    }),
-  });
+  try {
+    if (!openaiApiKey) {
+      console.warn('OpenAI API key not configured, using fallback embedding');
+      return generateFallbackEmbedding(text);
+    }
 
-  const data = await response.json();
-  return data.data[0].embedding;
+    const response = await fetch('https://api.openai.com/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'text-embedding-3-small',
+        input: text,
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn('OpenAI embedding request failed, using fallback');
+      return generateFallbackEmbedding(text);
+    }
+
+    const data = await response.json();
+    return data.data[0].embedding;
+  } catch (error) {
+    console.warn('Error generating OpenAI embedding, using fallback:', error);
+    return generateFallbackEmbedding(text);
+  }
+}
+
+// Simple fallback embedding generation
+function generateFallbackEmbedding(text: string): number[] {
+  // Generate a simple hash-based embedding for fallback
+  const vector = new Array(1536).fill(0); // OpenAI embedding size
+  
+  for (let i = 0; i < text.length; i++) {
+    const char = text.charCodeAt(i);
+    vector[i % 1536] += char;
+  }
+  
+  // Normalize the vector
+  const magnitude = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
+  return vector.map(val => magnitude > 0 ? val / magnitude : 0);
 }
 
 serve(async (req) => {
