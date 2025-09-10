@@ -101,14 +101,14 @@ const Index = () => {
             {/* Left Column - Text Content */}
             <div className="text-center lg:text-left text-white">
               <Badge variant="secondary" className="mb-6 text-primary bg-white/20">
-                Multiple AI Personalities • Memory • Voice
+                Adaptive Personalities • Philosophical Depth • Memory • Voice
               </Badge>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
                 Meet AI William
               </h1>
               <p className="text-lg md:text-xl mb-8 text-white/90">
-                Experience William MacDonald White's AI twin with multiple personalities—from Entrepreneur to Storyteller. 
-                Advanced memory makes every conversation build on the last, with intelligent curiosity triggers that keep discussions engaging.
+                Experience William MacDonald White's AI twin with sophisticated conversation capabilities—from business strategy to philosophical depth. 
+                Advanced memory, adaptive personality, and intelligent conversation dynamics create genuinely engaging interactions.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                 <Link to="/chat">
@@ -150,9 +150,9 @@ const Index = () => {
       <section className="py-20 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Advanced AI Conversation System</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Next-Generation AI Conversation System</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Multiple personalities, cumulative memory, and intelligent conversation dynamics create truly engaging interactions.
+              Adaptive personalities, philosophical depth, comedy timing, and cumulative memory create conversations that feel genuinely human.
             </p>
           </div>
 
@@ -162,9 +162,9 @@ const Index = () => {
                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                   <Sparkles className="w-6 h-6 text-primary" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">6 AI Personalities</h3>
+                <h3 className="text-xl font-semibold mb-2">Adaptive AI Personalities</h3>
                 <p className="text-muted-foreground">
-                  Switch between Entrepreneur, Professional, Mentor, Storyteller, Futurist, and Interviewer modes for different conversation styles.
+                  Dynamic personality system with Entrepreneur, Professional, Mentor, Storyteller, Futurist, and Interviewer modes that adapt to conversation context.
                 </p>
               </CardContent>
             </Card>
@@ -222,9 +222,9 @@ const Index = () => {
                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                   <Target className="w-6 h-6 text-primary" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Curiosity Triggers</h3>
+                <h3 className="text-xl font-semibold mb-2">Intelligent Conversation Flow</h3>
                 <p className="text-muted-foreground">
-                  AI detects ambiguity, missing details, and conversation opportunities to ask engaging follow-up questions.
+                  Advanced curiosity detection, conversation timing, and philosophical depth create naturally engaging dialogues with perfect pacing.
                 </p>
               </CardContent>
             </Card>
@@ -234,9 +234,9 @@ const Index = () => {
                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                   <MessageCircle className="w-6 h-6 text-primary" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Voice & Text Chat</h3>
+                <h3 className="text-xl font-semibold mb-2">Natural Voice Conversations</h3>
                 <p className="text-muted-foreground">
-                  Natural voice conversations with advanced speech recognition, text-to-speech, and seamless text input.
+                  Sophisticated speech with perfect timing, natural pauses, and comedy elements. Advanced recognition and seamless text integration.
                 </p>
               </CardContent>
             </Card>
@@ -249,6 +249,18 @@ const Index = () => {
                 <h3 className="text-xl font-semibold mb-2">Smart Analytics</h3>
                 <p className="text-muted-foreground">
                   Lead scoring, intent detection, and conversation insights help identify opportunities and improve interactions.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-card">
+              <CardContent className="p-6">
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <Brain className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Philosophical Depth</h3>
+                <p className="text-muted-foreground">
+                  Engages with complex questions about consciousness, meaning, and existence using computational metaphors and genuine introspection.
                 </p>
               </CardContent>
             </Card>

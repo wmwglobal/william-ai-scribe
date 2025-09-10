@@ -1,8 +1,11 @@
 // Audio utilities for voice chat functionality
+import { ComedyTTSProcessor, ComedyAudioPlayer, AudioSegment } from './audio/ComedyTTS';
 
 export class AudioPlayer {
   private audioElement: HTMLAudioElement | null = null;
   private isPlaying = false;
+  private comedyProcessor = new ComedyTTSProcessor();
+  private comedyPlayer: ComedyAudioPlayer | null = null;
 
   constructor() {
     // Initialize audio element
@@ -97,7 +100,107 @@ export class AudioPlayer {
   }
 
   getIsPlaying(): boolean {
-    return this.isPlaying;
+    return this.isPlaying || (this.comedyPlayer?.getIsPlaying() ?? false);
+  }
+
+  // Enhanced playback with comedy timing support
+  async playComedyAudio(
+    text: string, 
+    onPlaybackStateChange?: (isPlaying: boolean) => void,
+    onSegmentComplete?: (text: string) => void,
+    onPauseStart?: (duration: number) => void
+  ): Promise<void> {
+    try {
+      // Check if text contains pause markers
+      const hasPauseMarkers = /\[pause:\d+(?:\.\d+)?s\]/.test(text);
+      
+      if (!hasPauseMarkers) {
+        // Fall back to regular TTS for text without timing markers
+        console.log('🎭 No comedy markers found, using standard TTS');
+        // You would call your regular TTS here
+        return;
+      }
+
+      console.log('🎭 Processing comedy timing for:', text);
+      
+      // Process text for comedy timing
+      const segments = this.comedyProcessor.processTextForTTS(text);
+      console.log('🎭 Generated', segments.length, 'TTS segments with timing');
+      
+      // Create comedy player with callbacks
+      this.comedyPlayer = new ComedyAudioPlayer({
+        onSegmentComplete: (segment: AudioSegment) => {
+          console.log('🎭 Completed segment:', segment.text);
+          onSegmentComplete?.(segment.text);
+        },
+        onPauseStart: (duration: number) => {
+          console.log(`🎭 [pause:${duration}s] - Dramatic timing moment`);
+          onPauseStart?.(duration);
+        },
+        onPlaybackComplete: () => {
+          console.log('🎭 Comedy performance complete');
+          this.isPlaying = false;
+          onPlaybackStateChange?.(false);
+        }
+      });
+
+      // For now, we'll simulate the audio generation since we need TTS integration
+      const audioSegments = await this.simulateComedyAudio(segments);
+      
+      this.isPlaying = true;
+      onPlaybackStateChange?.(true);
+      
+      // Play with proper timing
+      await this.comedyPlayer.playAudioSegments(audioSegments);
+      
+    } catch (error) {
+      console.error('🎭 Comedy audio playback failed:', error);
+      this.isPlaying = false;
+      onPlaybackStateChange?.(false);
+      throw error;
+    }
+  }
+
+  // Temporary method to simulate comedy audio until TTS integration is complete
+  private async simulateComedyAudio(segments: any[]): Promise<AudioSegment[]> {
+    const audioSegments: AudioSegment[] = [];
+    
+    for (const segment of segments) {
+      // Create a silent audio blob for simulation
+      const audioBlob = await this.createSilentAudio(segment.text.length * 100); // Rough timing
+      
+      audioSegments.push({
+        audioBlob,
+        duration: segment.text.length * 0.1, // Rough duration estimate
+        pauseAfter: segment.pauseAfter || 0,
+        text: segment.text
+      });
+    }
+    
+    return audioSegments;
+  }
+
+  private async createSilentAudio(durationMs: number): Promise<Blob> {
+    // Create a short silent audio blob for simulation
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const buffer = audioContext.createBuffer(1, audioContext.sampleRate * (durationMs / 1000), audioContext.sampleRate);
+    
+    // Convert to blob (simplified for demo)
+    return new Blob([new ArrayBuffer(1024)], { type: 'audio/wav' });
+  }
+
+  stopCurrentAudio(): void {
+    if (this.audioElement) {
+      this.audioElement.pause();
+      this.audioElement.currentTime = 0;
+    }
+    
+    if (this.comedyPlayer) {
+      this.comedyPlayer.stop();
+      this.comedyPlayer = null;
+    }
+    
+    this.isPlaying = false;
   }
 }
 

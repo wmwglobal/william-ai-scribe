@@ -55,6 +55,14 @@ export const GROQ_MODELS: GroqModel[] = [
 
 export const WILLIAM_PERSONALITIES: Personality[] = [
   {
+    id: 'william',
+    name: 'William Core',
+    description: 'Core AI podcast co-host personality - witty, philosophical, self-aware',
+    systemPrompt: 'Dynamic William personality - handled by Edge Function',
+    voiceId: 'william_natural',
+    color: 'from-purple-500 to-indigo-600'
+  },
+  {
     id: 'entrepreneur',
     name: 'Entrepreneur',
     description: 'Strategic business consultant focused on growth and innovation',
@@ -165,5 +173,5 @@ export const getDefaultModel = (): GroqModel => {
 };
 
 export const getDefaultPersonality = (): Personality => {
-  return WILLIAM_PERSONALITIES[0]; // Entrepreneur by default - strategic business focus
+  return WILLIAM_PERSONALITIES[0]; // William Core by default - main podcast personality
 };

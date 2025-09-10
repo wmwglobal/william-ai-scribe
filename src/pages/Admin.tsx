@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AuthGuard } from '@/components/AuthGuard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,30 +8,42 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar, Filter, Download, Eye, Settings, Users, TrendingUp, Clock, FileText, AlertCircle } from 'lucide-react';
-import { useAdminSessions, useAdminStats, SessionWithSummary } from '@/hooks/useAdminData';
-import { SessionDetailModal } from '@/components/SessionDetailModal';
+import { Calendar, Filter, Download, Eye, Settings, Users, TrendingUp, Clock, FileText, AlertCircle, ChevronRight, Sparkles, Target, ArrowUpRight } from 'lucide-react';
+import { useAdminSessions, useAdminStats } from '@/hooks/useAdminData';
 import { getScoreBadgeVariant } from '@/lib/leadScore';
 
 const Admin = () => {
+  const navigate = useNavigate();
   const [dateRange, setDateRange] = useState('7d');
   const [intentFilter, setIntentFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSession, setSelectedSession] = useState<SessionWithSummary | null>(null);
+  const [sortBy, setSortBy] = useState<'score' | 'date' | 'duration'>('score');
   
   const { sessions, loading: sessionsLoading, error: sessionsError } = useAdminSessions(dateRange, intentFilter);
   const { stats, loading: statsLoading } = useAdminStats(dateRange);
 
-  // Filter sessions based on search term
-  const filteredSessions = sessions.filter(session => {
-    if (!searchTerm) return true;
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      session.contact_name?.toLowerCase().includes(searchLower) ||
-      session.email?.toLowerCase().includes(searchLower) ||
-      session.visitor_id?.toLowerCase().includes(searchLower)
-    );
-  });
+  // Filter and sort sessions
+  const filteredSessions = sessions
+    .filter(session => {
+      if (!searchTerm) return true;
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        session.contact_name?.toLowerCase().includes(searchLower) ||
+        session.email?.toLowerCase().includes(searchLower) ||
+        session.visitor_id?.toLowerCase().includes(searchLower)
+      );
+    })
+    .sort((a, b) => {
+      if (sortBy === 'score') {
+        return (b.lead_score || 0) - (a.lead_score || 0);
+      } else if (sortBy === 'date') {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      } else {
+        const aDuration = a.duration ? parseInt(a.duration) : 0;
+        const bDuration = b.duration ? parseInt(b.duration) : 0;
+        return bDuration - aDuration;
+      }
+    });
 
   const getIntentBadgeVariant = (intent: string | null) => {
     if (!intent) return 'outline';
@@ -130,10 +143,25 @@ const Admin = () => {
               </Card>
             </div>
 
-            {/* Recent Sessions */}
+            {/* Priority Sessions */}
             <Card>
               <CardHeader>
-                <CardTitle>Recent High-Value Sessions</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-primary" />
+                    Priority Sessions
+                  </CardTitle>
+                  <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="score">By Score</SelectItem>
+                      <SelectItem value="date">By Date</SelectItem>
+                      <SelectItem value="duration">By Duration</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </CardHeader>
               <CardContent>
                 {sessionsLoading ? (
@@ -146,46 +174,123 @@ const Admin = () => {
                     Error loading sessions: {sessionsError}
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {sessions.filter(s => (s.lead_score || 0) >= 60).map((session) => (
-                      <div key={session.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <div className="w-2 h-2 bg-primary rounded-full"></div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium">{session.contact_name || 'Anonymous'}</p>
-                               {session.summary && (
-                                 <FileText className="w-3 h-3 text-primary" />
-                               )}
+                  <div className="space-y-3">
+                    {filteredSessions.slice(0, 5).map((session) => {
+                      const isHighPriority = (session.lead_score || 0) >= 75;
+                      const isMediumPriority = (session.lead_score || 0) >= 50;
+                      
+                      return (
+                        <div 
+                          key={session.id} 
+                          className={`
+                            relative p-4 rounded-lg border transition-all cursor-pointer
+                            ${isHighPriority ? 'border-primary bg-primary/5 hover:bg-primary/10' : 
+                              isMediumPriority ? 'border-orange-500/50 hover:bg-orange-500/5' : 
+                              'hover:bg-muted/50'}
+                          `}
+                          onClick={() => navigate(`/admin/session/${session.id}`)}
+                        >
+                          {isHighPriority && (
+                            <div className="absolute -top-2 -right-2">
+                              <div className="relative">
+                                <Sparkles className="w-6 h-6 text-primary animate-pulse" />
+                                <Sparkles className="w-6 h-6 text-primary absolute top-0 left-0 animate-ping" />
+                              </div>
                             </div>
-                            <p className="text-sm text-muted-foreground">
-                              {new Date(session.started_at).toLocaleDateString()} • {session.duration}
-                            </p>
+                          )}
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className={`
+                                w-3 h-3 rounded-full 
+                                ${isHighPriority ? 'bg-primary animate-pulse' : 
+                                  isMediumPriority ? 'bg-orange-500' : 'bg-muted-foreground'}
+                              `} />
+                              
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-semibold text-lg">
+                                    {session.contact_name || 'Anonymous Visitor'}
+                                  </p>
+                                  {session.summary && (
+                                    <Badge variant="outline" className="gap-1">
+                                      <FileText className="w-3 h-3" />
+                                      Summary
+                                    </Badge>
+                                  )}
+                                  {session.cta_chosen && (
+                                    <Badge variant="default" className="gap-1">
+                                      <Target className="w-3 h-3" />
+                                      CTA
+                                    </Badge>
+                                  )}
+                                </div>
+                                
+                                <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                                  <span>{new Date(session.started_at).toLocaleDateString()} {new Date(session.started_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</span>
+                                  <span>•</span>
+                                  <span>{session.duration || 'Unknown'}</span>
+                                  {session.email && (
+                                    <>
+                                      <span>•</span>
+                                      <span className="text-primary">{session.email}</span>
+                                    </>
+                                  )}
+                                </div>
+                                
+                                {session.final_intent && (
+                                  <div className="mt-2">
+                                    <Badge variant={getIntentBadgeVariant(session.final_intent)}>
+                                      {session.final_intent.replace(/_/g, ' ')}
+                                    </Badge>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-3">
+                              <div className="text-center">
+                                <div className={`
+                                  text-2xl font-bold 
+                                  ${isHighPriority ? 'text-primary' : 
+                                    isMediumPriority ? 'text-orange-500' : 'text-muted-foreground'}
+                                `}>
+                                  {session.lead_score || 0}
+                                </div>
+                                <div className="text-xs text-muted-foreground">Score</div>
+                              </div>
+                              <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {session.final_intent && (
-                            <Badge variant={getIntentBadgeVariant(session.final_intent)}>
-                              {session.final_intent.replace('_', ' ')}
-                            </Badge>
-                          )}
-                          <Badge variant={getScoreBadgeVariant(session.lead_score || 0)}>
-                            {session.lead_score || 0}
-                          </Badge>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => setSelectedSession(session)}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                    {sessions.filter(s => (s.lead_score || 0) >= 60).length === 0 && (
+                      );
+                    })}
+                    
+                    {filteredSessions.length === 0 && (
                       <div className="text-center py-8 text-muted-foreground">
-                        No high-value sessions found
+                        No sessions found matching your criteria
                       </div>
+                    )}
+                    
+                    {filteredSessions.length > 5 && (
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={() => {
+                          // Find the tabs trigger for sessions and click it
+                          const sessionsTab = document.querySelector('[role="tab"][data-state][value="sessions"]') as HTMLButtonElement;
+                          if (sessionsTab) {
+                            sessionsTab.click();
+                          } else {
+                            // Fallback: Try to find any element with value="sessions" 
+                            const anySessionsElement = document.querySelector('[value="sessions"]') as HTMLElement;
+                            if (anySessionsElement) anySessionsElement.click();
+                          }
+                        }}
+                      >
+                        View All {filteredSessions.length} Sessions
+                        <ArrowUpRight className="w-4 h-4 ml-2" />
+                      </Button>
                     )}
                   </div>
                 )}
@@ -277,9 +382,16 @@ const Admin = () => {
                         </TableRow>
                       ) : (
                         filteredSessions.map((session) => (
-                          <TableRow key={session.id} className="hover:bg-muted/50">
+                          <TableRow 
+                            key={session.id} 
+                            className="hover:bg-muted/50 cursor-pointer"
+                            onClick={() => navigate(`/admin/session/${session.id}`)}
+                          >
                             <TableCell>
-                              {new Date(session.started_at).toLocaleDateString()}
+                              <div>
+                                <p>{new Date(session.started_at).toLocaleDateString()}</p>
+                                <p className="text-xs text-muted-foreground">{new Date(session.started_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</p>
+                              </div>
                             </TableCell>
                             <TableCell>
                               <div>
@@ -325,7 +437,10 @@ const Admin = () => {
                               <Button 
                                 variant="ghost" 
                                 size="sm"
-                                onClick={() => setSelectedSession(session)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/admin/session/${session.id}`);
+                                }}
                               >
                                 <Eye className="w-4 h-4" />
                               </Button>
@@ -367,13 +482,6 @@ const Admin = () => {
           </TabsContent>
         </Tabs>
       </div>
-
-      {/* Session Detail Modal */}
-      <SessionDetailModal
-        session={selectedSession}
-        isOpen={!!selectedSession}
-        onClose={() => setSelectedSession(null)}
-      />
     </div>
     </AuthGuard>
   );

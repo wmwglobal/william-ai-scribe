@@ -6,6 +6,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 const ALLOWED_ORIGINS = [
   'https://lovable.dev',
   'http://localhost:5173',
+  'http://localhost:5174',
   'http://localhost:8080',  'http://localhost:3000',
   'https://2e10a6c0-0b90-4a50-8d27-471a5969124f.lovableproject.com',
   'https://2e10a6c0-0b90-4a50-8d27-471a5969124f.lovable.app',
@@ -199,7 +200,37 @@ serve(async (req) => {
     }
 
     const groqData = await groqResponse.json();
-    const transcribedText = groqData.text || '';
+    let transcribedText = groqData.text || '';
+
+    // Filter out common Whisper hallucinations on silence/noise
+    const hallucinationPhrases = [
+      'thank you',
+      'thanks for watching',
+      'thanks for listening',
+      'please subscribe',
+      'see you next time',
+      'bye bye',
+      'you',
+      '♪',
+      '[music]',
+      '[applause]',
+      '[silence]',
+      'sil',
+      '.',
+      '...',
+      ''
+    ];
+    
+    const cleanedText = transcribedText.trim().toLowerCase();
+    const isHallucination = hallucinationPhrases.some(phrase => 
+      cleanedText === phrase.toLowerCase() || 
+      (cleanedText.length < 20 && cleanedText.includes(phrase.toLowerCase()))
+    );
+    
+    if (isHallucination) {
+      console.log('Filtered out ASR hallucination:', transcribedText);
+      transcribedText = ''; // Return empty string for hallucinations
+    }
 
     const duration = Date.now() - startTime;
     console.log(`ASR completed in ${duration}ms, text length: ${transcribedText.length}, session: ${session_id}`);

@@ -23,6 +23,14 @@ export const AuthGuard = ({ children, requiredRole = 'admin' }: AuthGuardProps) 
   const navigate = useNavigate();
 
   useEffect(() => {
+    // DEVELOPMENT ONLY - Remove before production!
+    if (window.location.hostname === 'localhost') {
+      console.log('Development mode: Auto-authenticating as admin');
+      setIsAuthenticated(true);
+      setUserRole('admin');
+      return; // Skip the rest of the auth check
+    }
+    
     const checkAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -48,23 +56,26 @@ export const AuthGuard = ({ children, requiredRole = 'admin' }: AuthGuardProps) 
 
     checkAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single();
-          
-        setUserRole(profile?.role || 'viewer');
-        setIsAuthenticated(true);
-      } else {
-        setIsAuthenticated(false);
-        setUserRole(null);
-      }
-    });
+    // Skip auth state subscription in development mode
+    if (window.location.hostname !== 'localhost') {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', session.user.id)
+            .single();
+            
+          setUserRole(profile?.role || 'viewer');
+          setIsAuthenticated(true);
+        } else {
+          setIsAuthenticated(false);
+          setUserRole(null);
+        }
+      });
 
-    return () => subscription.unsubscribe();
+      return () => subscription.unsubscribe();
+    }
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {

@@ -4,6 +4,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 const ALLOWED_ORIGINS = [
   'https://lovable.dev',
   'http://localhost:5173',
+  'http://localhost:5174',
   'http://localhost:8080',  'http://localhost:3000',
   'https://2e10a6c0-0b90-4a50-8d27-471a5969124f.sandbox.lovable.dev'
 ];
@@ -94,12 +95,13 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         text: cleanText, // Use cleaned text for TTS
-        model_id: 'eleven_turbo_v2_5', // High quality, low latency
+        model_id: 'eleven_flash_v2', // Fastest English-only model for speed
         voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.75,
-          style: 0.0,
-          use_speaker_boost: true
+          stability: 0.8,           // Higher stability for more consistent voice
+          similarity_boost: 0.8,    // Higher similarity to voice clone
+          style: 0.2,              // More expressive/energetic
+          use_speaker_boost: true,
+          speed: 1.0               // Normal speaking rate
         }
       })
     });

@@ -5,6 +5,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 const ALLOWED_ORIGINS = [
   'https://lovable.dev',
   'http://localhost:5173',
+  'http://localhost:5174',
   'http://localhost:8080',  'http://localhost:3000',
   'https://2e10a6c0-0b90-4a50-8d27-471a5969124f.sandbox.lovable.dev'
 ];
@@ -49,7 +50,7 @@ serve(async (req) => {
       );
     }
 
-    const { messages, model = 'llama-3.1-70b-versatile', systemPrompt, session_id } = await req.json();
+    const { messages, model = 'gpt-oss-20b', systemPrompt, session_id } = await req.json();
     console.log('Request body:', { model, systemPrompt, session_id, messageCount: messages?.length });
 
     if (!messages || !Array.isArray(messages)) {

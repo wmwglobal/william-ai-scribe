@@ -6,7 +6,14 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const ALLOWED_ORIGINS = [
   'https://2e10a6c0-0b90-4a50-8d27-471a5969124f.sandbox.lovable.dev',
   'http://localhost:8080',
-  'https://localhost:8080'
+  'https://localhost:8080',
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5175',
+  'http://localhost:3000',
+  'http://localhost:4173',
+  'https://williammwhite.com',
+  'https://id-preview--2e10a6c0-0b90-4a50-8d27-471a5969124f.lovable.app'
 ];
 
 // Rate limiting storage
@@ -120,7 +127,12 @@ serve(async (req) => {
       tags = [] 
     } = await req.json();
 
-    // Validate session if session_id provided
+    // Warn if session_id provided without session_secret
+    if (session_id && !session_secret) {
+      console.warn('Session ID provided without session secret - skipping session validation');
+    }
+    
+    // Validate session if both session_id and session_secret are provided
     if (session_id && session_secret) {
       const { data: session, error: sessionError } = await supabase
         .from('sessions')
@@ -190,7 +202,15 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in save_memory function:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      details: `Error type: ${error.name}`
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

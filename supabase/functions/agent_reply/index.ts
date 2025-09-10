@@ -1,6 +1,9 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { buildDynamicWilliamPrompt, analyzeConversationContext } from "./william-personality.ts";
+import { WilliamComedyEngine } from "./comedy-engine.ts";
+import { WilliamPhilosophicalEngine } from "./philosophical-engine.ts";
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const serviceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -14,7 +17,8 @@ const corsHeaders = {
 
 // Security: Allowed origins for enhanced protection
 const ALLOWED_ORIGINS = [
-  'http://localhost:5173', 
+  'http://localhost:5173',
+  'http://localhost:5174',
   'https://suyervjawrmbyyxetblv.supabase.co',
   'https://agent-reply-suyervjawrmbyyxetblv.supabase.co',
   'https://2e10a6c0-0b90-4a50-8d27-471a5969124f.sandbox.lovable.dev',
@@ -42,7 +46,7 @@ function checkRateLimit(clientId: string): boolean {
   return true;
 }
 
-async function callGroqChat(messages: any[], model: string = 'llama-3.3-70b-versatile', systemPrompt: string, sessionId: string, supabase: any) {
+async function callGroqChat(messages: any[], model: string = 'gpt-oss-20b', systemPrompt: string, sessionId: string, supabase: any) {
   const response = await supabase.functions.invoke('groq_chat', {
     body: {
       messages,
@@ -477,7 +481,7 @@ serve(async (req) => {
         headers: { ...dynamicCorsHeaders, 'Retry-After': '60' }
       });
     }
-    const { session_id, user_message, session_secret, mode } = await req.json();
+    const { session_id, user_message, session_secret, mode, is_performer_mode } = await req.json();
     
     if (!session_id || !user_message || !session_secret) {
       return new Response(JSON.stringify({ error: 'session_id, user_message, and session_secret required' }), {
@@ -633,18 +637,31 @@ serve(async (req) => {
     // Check if this is the first conversation (no previous agent responses)
     const isFirstMessage = !utterances?.some(u => u.speaker === 'agent');
     
-    // Build personality-aware system prompt
-    const personalityPrompt = PERSONALITY_PROMPTS[currentMode] || PERSONALITY_PROMPTS.entrepreneur;
-    let contextualPrompt = personalityPrompt;
+    // Build William's dynamic personality prompt based on conversation context
+    const conversationContext = analyzeConversationContext(utterances || []);
+    conversationContext.isFirstInteraction = isFirstMessage;
+    conversationContext.isPerformerMode = is_performer_mode;
+    
+    let contextualPrompt = buildDynamicWilliamPrompt(conversationContext);
     
     // Add memory context if available
     if (memoryContext) {
-      contextualPrompt += memoryContext;
+      contextualPrompt += '\n\nRELEVANT MEMORIES:\n' + memoryContext;
     }
     
     // Add conversation dynamics instructions
     if (conversationDynamics) {
-      contextualPrompt += conversationDynamics;
+      contextualPrompt += '\n\nCONVERSATION DYNAMICS:\n' + conversationDynamics;
+    }
+    
+    // Legacy mode support - fallback to old personality prompts if mode is not 'william'
+    if (currentMode !== 'william' && currentMode !== 'entrepreneur') {
+      const legacyPrompt = PERSONALITY_PROMPTS[currentMode];
+      if (legacyPrompt) {
+        contextualPrompt = legacyPrompt;
+        if (memoryContext) contextualPrompt += memoryContext;
+        if (conversationDynamics) contextualPrompt += conversationDynamics;
+      }
     }
     
     if (isFirstMessage) {
@@ -688,11 +705,88 @@ IMPORTANT: This is the first message. Be casual and conversational like you're m
     } catch (openaiError) {
       console.error('OpenAI error, falling back to Groq:', openaiError);
       // Fallback to Groq for response generation
-      const groqResponse = await callGroqChat(messages, 'llama-3.3-70b-versatile', contextualPrompt, session_id, supabase);
+      const groqResponse = await callGroqChat(messages, 'gpt-oss-20b', contextualPrompt, session_id, supabase);
       agentText = groqResponse.text;
     }
 
+    // Apply William's comedy timing and patterns
+    const comedyEngine = new WilliamComedyEngine();
+    
+    // Check if we should use a comedy response instead
+    const shouldUseComedy = comedyEngine.shouldUseComedyResponse(user_message, utterances);
+    if (shouldUseComedy && Math.random() < 0.2) { // 20% chance to use pre-generated comedy
+      const comedyResponse = comedyEngine.generateComedyResponse(user_message);
+      if (comedyResponse) {
+        console.log('🎭 Using pre-generated comedy response');
+        agentText = comedyResponse;
+      }
+    }
+    
+    // Apply William's philosophical depth and introspection - ONLY in performer mode
+    const philosophicalEngine = new WilliamPhilosophicalEngine();
+    
+    console.log('🧠 DEBUG: Checking philosophical depth for message:', user_message);
+    console.log('🧠 DEBUG: Current mode:', currentMode);
+    console.log('🧠 DEBUG: Is performer mode:', is_performer_mode);
+    console.log('🧠 DEBUG: Original agent text length:', agentText?.length || 0);
+    
+    // Disable philosophical engine entirely - performer mode should focus on witty banter, not philosophy
+    const shouldUsePhilosophical = false;
+    console.log('🧠 DEBUG: Should use philosophical depth:', shouldUsePhilosophical);
+    
+    if (shouldUsePhilosophical) {
+      console.log('🧠 Processing response for philosophical depth');
+      
+      // Try philosophical response first
+      const philosophicalResponse = philosophicalEngine.generatePhilosophicalResponse(user_message, agentText);
+      console.log('🧠 DEBUG: Philosophical response generated:', philosophicalResponse ? 'YES' : 'NO');
+      console.log('🧠 DEBUG: Philosophical response preview:', philosophicalResponse?.substring(0, 100));
+      
+      if (philosophicalResponse) {
+        console.log('🧠 Using philosophical response');
+        agentText = philosophicalResponse;
+      } else {
+        // Try experiential response as fallback
+        const experientialResponse = philosophicalEngine.generateExperientialResponse(user_message);
+        console.log('🧠 DEBUG: Experiential response generated:', experientialResponse ? 'YES' : 'NO');
+        
+        if (experientialResponse) {
+          console.log('🧠 Using experiential response');
+          agentText = experientialResponse;
+        }
+      }
+    } else {
+      console.log('🧠 DEBUG: Philosophical engine conditions not met');
+      console.log('🧠 DEBUG: Is philosophical question?', philosophicalEngine.isPhilosophicalQuestion(user_message));
+    }
+    
+    // Disable random philosophical observations entirely
+    if (false) { // Disabled - no more philosophical observations
+      const observation = philosophicalEngine.generateExistentialObservation();
+      if (observation) {
+        console.log('🧠 Adding spontaneous philosophical observation');
+        agentText = `${agentText} [pause:0.7s] ${observation}`;
+      }
+    }
+    
+    // Always process for comedy timing (pauses, patterns, etc.)
+    const timingAnalysis = comedyEngine.analyzeConversationTiming(utterances);
+    if (timingAnalysis.shouldUsePauses || currentMode === 'william') {
+      console.log('🎭 Processing response for comedy timing');
+      console.log('🎭 DEBUG: Text before comedy processing:', agentText.substring(0, 200));
+      console.log('🎭 DEBUG: Contains pause markers before?', /\[pause:\d+(?:\.\d+)?s\]/.test(agentText));
+      
+      agentText = comedyEngine.processResponse(agentText, 'conversation', session_id);
+      
+      console.log('🎭 DEBUG: Text after comedy processing:', agentText.substring(0, 200));
+      console.log('🎭 DEBUG: Contains pause markers after?', /\[pause:\d+(?:\.\d+)?s\]/.test(agentText));
+      console.log('🎭 Comedy-enhanced response length:', agentText.length);
+    }
+
     // Save agent utterance
+    console.log('💾 DEBUG: Final agent text being saved:', agentText.substring(0, 300));
+    console.log('💾 DEBUG: Final text has pause markers?', /\[pause:\d+(?:\.\d+)?s\]/.test(agentText));
+    
     const { data: agentUtterance } = await supabase
       .from('utterances')
       .insert({

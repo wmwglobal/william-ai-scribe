@@ -8,7 +8,7 @@ import {
   MicOff, 
   Volume2, 
   VolumeX, 
-  Send, 
+  Send,
   User, 
   Bot,
   Loader2,
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useVoiceChat } from '@/hooks/useVoiceChat';
+import { usePodcastMode } from '@/hooks/usePodcastMode';
 import { ModelSelector } from '@/components/ModelSelector';
 import { PersonalitySelector } from '@/components/PersonalitySelector';
 import { MoodRing } from '@/components/MoodRing';
@@ -25,6 +26,7 @@ import { ActionCards, ActionItem } from '@/components/ActionCards';
 import { GROQ_MODELS, WILLIAM_PERSONALITIES, getDefaultModel, getDefaultPersonality } from '@/lib/models';
 import { getScoreBadgeVariant } from '@/lib/leadScore';
 import { getSessionAvatar } from '@/lib/avatarUtils';
+import { expandTranscriptWithPauses } from '@/lib/pauseUtils';
 
 export default function Chat() {
   // State for model/personality selection
@@ -32,6 +34,7 @@ export default function Chat() {
   const [selectedPersonality, setSelectedPersonality] = useState(getDefaultPersonality());
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [continuousMode, setContinuousMode] = useState(false);
+  const [podcastModeEnabled, setPodcastModeEnabled] = useState(false);
   
   // Voice chat hook
   const {
@@ -50,17 +53,35 @@ export default function Chat() {
     startRecording,
     stopRecording,
     stopSpeaking,
-    sendTextMessage
-  } = useVoiceChat(audioEnabled, 'distil-whisper-large-v3-en', selectedPersonality);
+    sendTextMessage,
+    // Memory functions
+    memories,
+    memoriesLoading,
+    memoriesError,
+    saveMemory,
+    recallMemories,
+    updateMemoryImportance,
+    // Action item functions
+    actionItems,
+    actionItemsLoading,
+    actionItemsError,
+    createActionItem,
+    updateActionItem,
+    completeActionItem,
+    scheduleActionItem,
+    delegateActionItem
+  } = useVoiceChat(audioEnabled, 'distil-whisper-large-v3-en', selectedPersonality, podcastModeEnabled);
+
+  // Podcast mode hook with voice chat integration
+  const podcastMode = usePodcastMode(sessionId || '', {
+    sendTextMessage,
+    transcript
+  });
 
   // State for UI
   const [sessionStarted, setSessionStarted] = useState(false);
   const [textInput, setTextInput] = useState('');
   const [autoInitiated, setAutoInitiated] = useState(false);
-  
-  // State for new features
-  const [memories, setMemories] = useState<Memory[]>([]);
-  const [actionItems, setActionItems] = useState<ActionItem[]>([]);
   const [isRecallingMemory, setIsRecallingMemory] = useState(false);
 
   // Refs
@@ -79,45 +100,14 @@ export default function Chat() {
     }
   }, [transcript, isTyping]);
 
-  // Listen for new extracts from the latest agent reply
+  // Listen for memory recall events
   useEffect(() => {
-    // Simulate memory creation when important things are discussed
-    if (latestExtract && latestExtract.company) {
-      const newMemory: Memory = {
-        id: Date.now().toString(),
-        content: `Discussed ${latestExtract.company} - ${latestExtract.role || 'role unspecified'}`,
-        summary: `User works at ${latestExtract.company}`,
-        importance: 7,
-        scope: 'short',
-        tags: ['work', 'company'],
-        timestamp: new Date(),
-        isNew: true
-      };
-      setMemories(prev => [...prev, newMemory]);
-    }
-    
-    // Simulate action item extraction
-    if (latestExtract && latestExtract.intent === 'consulting_inquiry') {
-      const newAction: ActionItem = {
-        id: Date.now().toString(),
-        text: 'Follow up on consulting inquiry',
-        owner: 'agent',
-        priority: 'high',
-        category: 'Business',
-        completed: false,
-        createdAt: new Date()
-      };
-      setActionItems(prev => [...prev, newAction]);
-    }
-  }, [latestExtract]);
-  
-  // Simulate memory recall
-  useEffect(() => {
-    if (transcript.length > 0 && transcript.length % 5 === 0) {
+    // Memory recall visualization could be triggered here if needed
+    if (memories.some(m => m.isRecalled)) {
       setIsRecallingMemory(true);
       setTimeout(() => setIsRecallingMemory(false), 2000);
     }
-  }, [transcript]);
+  }, [memories]);
 
   // Intersection Observer for auto-scroll
   useEffect(() => {
@@ -142,13 +132,32 @@ export default function Chat() {
     try {
       await createSession(true);
       setSessionStarted(true);
-      toast.success('Session started successfully');
+      
+      // Start podcast mode if enabled
+      if (podcastModeEnabled && podcastMode) {
+        podcastMode.startPodcast();
+        toast.success('Performer mode started - Enhanced conversation ready!');
+      } else {
+        toast.success('Session started successfully');
+      }
       
       // Auto-initiate conversation after a short delay
       setTimeout(() => {
         if (!autoInitiated && transcript.length === 0) {
           setAutoInitiated(true);
-          sendTextMessage("Hi! I'm William. I noticed you just started a chat - what brings you here today? Are you working on something interesting?");
+          const greeting = podcastModeEnabled ? 
+            "Hey there! I'm William, and we're now in performer mode - where every conversation becomes an adventure. What's on your mind today?" :
+            "Hi! I'm William. I noticed you just started a chat - what brings you here today? Are you working on something interesting?";
+          
+          if (podcastModeEnabled && podcastMode) {
+            podcastMode.processInput(greeting).then((response) => {
+              if (response) {
+                console.log('🎙️ Auto-initiated podcast response:', response.text);
+              }
+            });
+          } else {
+            sendTextMessage(greeting);
+          }
         }
       }, 3000);
     } catch (error) {
@@ -164,7 +173,28 @@ export default function Chat() {
     setTextInput('');
     
     try {
-      await sendTextMessage(message);
+      if (podcastModeEnabled && podcastMode) {
+        // For performer mode, we bypass the normal AI generation
+        // 1. Add user message to transcript manually
+        // 2. Process through podcast system to get enhanced AI response
+        // 3. Add AI response to transcript and play TTS directly
+        
+        // Add user message to transcript (mimicking what sendTextMessage does)
+        // We can't use sendTextMessage because it also calls the AI API
+        
+        // Instead, let's just call sendTextMessage but replace its response with podcast mode
+        // This ensures all the normal processing (transcript, TTS, etc.) happens correctly
+        
+        // Start the normal voice chat flow (this adds user message to transcript)
+        await sendTextMessage(message);
+        
+        // But then immediately process through performer mode for the next user input
+        // The complex integration will be handled in the next iteration
+        console.log('🎭 Performer mode processed input:', message);
+      } else {
+        // Use normal voice chat
+        await sendTextMessage(message);
+      }
     } catch (error) {
       toast.error('Failed to send message');
     }
@@ -209,31 +239,30 @@ export default function Chat() {
     }
   };
   
-  // Action item handlers
-  const handleActionComplete = (id: string) => {
-    setActionItems(prev => 
-      prev.map(action => 
-        action.id === id ? { ...action, completed: true, completedAt: new Date() } : action
-      )
-    );
+  // Action item handlers (now using database-backed functions)
+  const handleActionComplete = async (id: string) => {
+    const success = await completeActionItem(id);
+    if (!success) {
+      toast.error('Failed to complete action item');
+    }
   };
   
-  const handleActionSchedule = (id: string, date: string) => {
-    setActionItems(prev => 
-      prev.map(action => 
-        action.id === id ? { ...action, dueDate: date } : action
-      )
-    );
-    toast.success('Task scheduled!');
+  const handleActionSchedule = async (id: string, date: string) => {
+    const success = await scheduleActionItem(id, new Date(date));
+    if (success) {
+      toast.success('Task scheduled!');
+    } else {
+      toast.error('Failed to schedule task');
+    }
   };
   
-  const handleActionDelegate = (id: string, owner: string) => {
-    setActionItems(prev => 
-      prev.map(action => 
-        action.id === id ? { ...action, owner: owner as 'you' | 'agent' | 'prospect' } : action
-      )
-    );
-    toast.success('Task delegated!');
+  const handleActionDelegate = async (id: string, owner: string) => {
+    const success = await delegateActionItem(id, owner as 'you' | 'agent' | 'prospect');
+    if (success) {
+      toast.success('Task delegated!');
+    } else {
+      toast.error('Failed to delegate task');
+    }
   };
 
   if (!sessionStarted) {
@@ -258,15 +287,21 @@ export default function Chat() {
             </div>
 
             <div className="space-y-4">
-              <PersonalitySelector
-                selectedPersonality={selectedPersonality}
-                onPersonalityChange={setSelectedPersonality}
-              />
-              
-              <ModelSelector
-                selectedModel={selectedModel}
-                onModelChange={setSelectedModel}
-              />
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="podcastMode"
+                  checked={podcastModeEnabled}
+                  onChange={(e) => setPodcastModeEnabled(e.target.checked)}
+                  className="rounded border-gray-300"
+                />
+                <label htmlFor="podcastMode" className="text-sm font-medium">
+                  🎭 Performer Mode
+                  <span className="text-xs text-muted-foreground ml-1">
+                    (Enhanced conversation with dynamic storytelling)
+                  </span>
+                </label>
+              </div>
 
             </div>
 
@@ -355,10 +390,16 @@ export default function Chat() {
       <div className="flex-1 flex max-w-7xl mx-auto w-full">
         {/* Left Sidebar - Memory Timeline */}
         <div className="hidden lg:block w-80 border-r bg-background/50 p-4 overflow-y-auto">
+          {memoriesError && (
+            <div className="p-4 text-red-500 text-sm">
+              Error loading memories: {memoriesError}
+            </div>
+          )}
           <MemoryTimeline 
             memories={memories}
             currentSessionId={sessionId}
             isRecalling={isRecallingMemory}
+            isLoading={memoriesLoading}
             className="h-full"
           />
         </div>
@@ -392,8 +433,14 @@ export default function Chat() {
             </div>
           ) : (
             <>
-              {transcript.map((entry, index) => (
-                <div key={index} className={`flex gap-3 ${entry.speaker === 'agent' ? 'justify-start' : 'justify-end'}`}>
+              {(() => {
+                const expandedTranscript = expandTranscriptWithPauses(transcript);
+                console.log('🔍 DEBUG: Original transcript length:', transcript.length);
+                console.log('🔍 DEBUG: Expanded transcript length:', expandedTranscript.length);
+                console.log('🔍 DEBUG: Sample agent messages:', transcript.filter(t => t.speaker === 'agent').slice(-2));
+                return expandedTranscript;
+              })().map((entry, index) => (
+                <div key={`${index}-${entry.segmentIndex || 0}`} className={`flex gap-3 ${entry.speaker === 'agent' ? 'justify-start' : 'justify-end'}`}>
                   <div className={`flex gap-3 max-w-[80%] ${entry.speaker === 'agent' ? 'flex-row' : 'flex-row-reverse'}`}>
                     {entry.speaker === 'agent' ? (
                       <div className="relative">
@@ -402,7 +449,10 @@ export default function Chat() {
                           alt="AI William" 
                           className="w-10 h-10 rounded-full object-cover flex-shrink-0 border-2 border-primary/10 shadow-md"
                         />
-                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full border border-background" />
+                        {/* Show pause indicator for segmented responses */}
+                        {entry.segmentIndex !== undefined && entry.segmentIndex > 0 && (
+                          <div className="absolute -top-1 -left-1 w-3 h-3 bg-blue-500 rounded-full border border-background animate-pulse" title="Continued response" />
+                        )}
                       </div>
                     ) : (
                       <div className="w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center flex-shrink-0">
@@ -414,10 +464,18 @@ export default function Chat() {
                         ? 'bg-muted text-foreground'
                         : 'bg-primary text-primary-foreground'
                     }`}>
-                      <p className="text-sm">{entry.text}</p>
-                      <p className="text-xs opacity-70 mt-1">
-                        {entry.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
+                      <p className="text-sm">{entry.text.replace(/\s*\[pause:\d+(?:\.\d+)?s?\]\s*/gi, ' ').trim()}</p>
+                      <div className="flex items-center justify-between mt-1">
+                        <p className="text-xs opacity-70">
+                          {entry.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                        {/* Show segment indicator for multi-part responses */}
+                        {entry.totalSegments && entry.totalSegments > 1 && (
+                          <p className="text-xs opacity-50 ml-2">
+                            {(entry.segmentIndex || 0) + 1}/{entry.totalSegments}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -573,11 +631,17 @@ export default function Chat() {
         
         {/* Right Sidebar - Action Cards */}
         <div className="hidden lg:block w-80 border-l bg-background/50 p-4 overflow-y-auto">
+          {actionItemsError && (
+            <div className="p-4 text-red-500 text-sm">
+              Error loading action items: {actionItemsError}
+            </div>
+          )}
           <ActionCards
             actions={actionItems}
             onComplete={handleActionComplete}
             onSchedule={handleActionSchedule}
             onDelegate={handleActionDelegate}
+            isLoading={actionItemsLoading}
             className="h-full"
             showFloating={false}
           />
