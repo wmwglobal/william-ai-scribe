@@ -575,11 +575,12 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
         console.log('🧠 Recalling memories for context:', userMessage);
         try {
           const memoryParams = ResponseOptimizer.getMemoryParams();
-          relevantMemories = await memoryHooks.recallMemories({
-            query: userMessage,
-            limit: memoryParams.limit,
-            minImportance: memoryParams.minImportance
-          });
+          // Memory recall temporarily disabled for stable launch
+          // relevantMemories = await memoryHooks.recallMemories({
+          //   query: userMessage,
+          //   limit: memoryParams.limit,
+          //   minImportance: memoryParams.minImportance
+          // });
         } catch (error) {
           console.warn('🧠 Memory recall failed, continuing without context');
         }
@@ -768,13 +769,14 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
                            agentResponse.extract.lead_score > 40 ? 'medium' : 'short';
               const importance = agentResponse.extract.lead_score / 100;
               
-              memoryHooks.saveMemory({
-                content: memoryContent.join(' | '),
-                scope,
-                importance,
-                tags: [agentResponse.extract.intent || 'general'],
-                metadata: agentResponse.extract
-              });
+              // Memory saving temporarily disabled for stable launch
+              // memoryHooks.saveMemory({
+              //   content: memoryContent.join(' | '),
+              //   scope,
+              //   importance,
+              //   tags: [agentResponse.extract.intent || 'general'],
+              //   metadata: agentResponse.extract
+              // });
             }
           }
           
@@ -824,17 +826,18 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
         
         // Also save the conversation exchange as episodic memory
         if (userMessage && displayText) {
-          memoryHooks.saveMemory({
-            content: `User: ${userMessage}\nAgent: ${displayText.substring(0, 200)}`,
-            scope: 'episodic',
-            importance: 0.3,
-            tags: ['conversation'],
-            metadata: { 
-              user_message: userMessage, 
-              agent_response: displayText,
-              intent: agentResponse.extract?.intent 
-            }
-          });
+          // Memory saving temporarily disabled for stable launch
+          // memoryHooks.saveMemory({
+          //   content: `User: ${userMessage}\nAgent: ${displayText.substring(0, 200)}`,
+          //   scope: 'episodic',
+          //   importance: 0.3,
+          //   tags: ['conversation'],
+          //   metadata: { 
+          //     user_message: userMessage, 
+          //     agent_response: displayText,
+          //     intent: agentResponse.extract?.intent 
+          //   }
+          // });
         }
       }
 

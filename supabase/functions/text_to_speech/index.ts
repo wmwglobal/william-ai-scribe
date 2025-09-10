@@ -5,8 +5,11 @@ const ALLOWED_ORIGINS = [
   'https://lovable.dev',
   'http://localhost:5173',
   'http://localhost:5174',
-  'http://localhost:8080',  'http://localhost:3000',
-  'https://2e10a6c0-0b90-4a50-8d27-471a5969124f.sandbox.lovable.dev'
+  'http://localhost:8080',
+  'http://localhost:3000',
+  'https://2e10a6c0-0b90-4a50-8d27-471a5969124f.sandbox.lovable.dev',
+  'https://williammwhite.com',
+  'https://www.williammwhite.com'
 ];
 
 const corsHeaders = {

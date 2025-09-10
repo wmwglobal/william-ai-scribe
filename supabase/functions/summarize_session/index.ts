@@ -4,9 +4,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // Security Configuration
 const ALLOWED_ORIGINS = [
-  'https://2e10a6c0-0b90-4a50-8d27-471a5969124f.sandbox.lovable.dev',
+  'http://localhost:5173',
+  'http://localhost:5174',
   'http://localhost:8080',
-  'https://localhost:8080'
+  'https://localhost:8080',
+  'https://williammwhite.com',
+  'https://www.williammwhite.com'
 ];
 
 // Rate limiting storage
