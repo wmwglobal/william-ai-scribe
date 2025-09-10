@@ -2,11 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AudioPlayer, AudioRecorder, audioToBase64 } from '@/lib/audioUtils';
 import type { CreateSessionResponse, AgentReplyResponse } from '@/lib/types';
-import { useMemories } from './useMemories';
-import { useActionItems } from './useActionItems';
+// Memory and action hooks temporarily disabled for stable launch
+// import { useMemories } from './useMemories';
+// import { useActionItems } from './useActionItems';
 import { EnhancedVAD, OptimizedAudioQueue, ResponseOptimizer, FAST_RESPONSE_CONFIG } from '@/lib/voiceOptimizations';
 
-export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'distil-whisper-large-v3-en', personality?: any, isPerformerMode: boolean = false, selectedModel?: any) {
+export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'distil-whisper-large-v3-en', personality?: any, isPerformerMode: boolean = false, selectedModel?: any, isUserTyping: boolean = false) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionSecret, setSessionSecret] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -354,43 +355,29 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
   const audioPlayerRef = useRef<AudioPlayer | null>(null);
   const audioRecorderRef = useRef<AudioRecorder | null>(null);
   
-  // Initialize memory and action item hooks
-  const memoryHooks = useMemories(sessionId, sessionSecret);
-  const actionItemHooks = useActionItems(sessionId);
+  // Memory and action hooks temporarily disabled for stable launch
+  // const memoryHooks = useMemories(sessionId, sessionSecret);
+  // const actionItemHooks = useActionItems(sessionId);
   
-  // Periodic memory consolidation (every 5 minutes)
-  useEffect(() => {
-    if (!sessionId) return;
-    
-    const consolidateMemories = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke('consolidate_memories', {
-          body: {
-            session_id: sessionId,
-            max_memories: 100,
-            importance_threshold: 0.7
-          }
-        });
-        
-        if (!error && data?.consolidated_count > 0) {
-          console.log('🧠 Memory consolidation complete:', data.consolidated_count, 'actions taken');
-        }
-      } catch (err) {
-        console.error('Failed to consolidate memories:', err);
-      }
-    };
-    
-    // Run consolidation every 5 minutes
-    const interval = setInterval(consolidateMemories, 5 * 60 * 1000);
-    
-    // Also run once after 30 seconds of session start
-    const initialTimer = setTimeout(consolidateMemories, 30 * 1000);
-    
-    return () => {
-      clearInterval(interval);
-      clearTimeout(initialTimer);
-    };
-  }, [sessionId]);
+  // Memory consolidation temporarily disabled for stable launch
+  // useEffect(() => {
+  //   if (!sessionId) return;
+  //   const consolidateMemories = async () => {
+  //     try {
+  //       const { data, error } = await supabase.functions.invoke('consolidate_memories', {
+  //         body: { session_id: sessionId, max_memories: 100, importance_threshold: 0.7 }
+  //       });
+  //       if (!error && data?.consolidated_count > 0) {
+  //         console.log('🧠 Memory consolidation complete:', data.consolidated_count, 'actions taken');
+  //       }
+  //     } catch (err) {
+  //       console.error('Failed to consolidate memories:', err);
+  //     }
+  //   };
+  //   const interval = setInterval(consolidateMemories, 5 * 60 * 1000);
+  //   const initialTimer = setTimeout(consolidateMemories, 30 * 1000);
+  //   return () => { clearInterval(interval); clearTimeout(initialTimer); };
+  // }, [sessionId]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -541,8 +528,8 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
 
       console.log('🎤 ✅ ASR SUCCESS:', { text: userMessage, duration: data.duration_ms, model: data.model });
       
-      // Smart interruption: Only interrupt William if actual words were spoken AND he's currently speaking
-      if (isSpeaking && userMessage.length > 2) { // Require at least 3 characters to avoid false triggers
+      // Smart interruption: Only interrupt William if actual words were spoken AND he's currently speaking AND user isn't typing
+      if (isSpeaking && userMessage.length > 2 && !isUserTyping) { // Require at least 3 characters and not typing to avoid false triggers
         console.log('🗣️ WORD-BASED INTERRUPTION: User spoke while William was speaking');
         console.log('🗣️ User said:', userMessage);
         console.log('🗣️ Gracefully stopping William after current segment');
@@ -560,6 +547,9 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
         
         // Re-enable microphone for immediate follow-up
         audioRecorderRef.current?.enableImmediately();
+      } else if (isSpeaking && userMessage.length > 2 && isUserTyping) {
+        console.log('⌨️ TYPING PROTECTION: User spoke while typing - not interrupting William');
+        console.log('⌨️ User said:', userMessage, '(while typing)');
       }
       
       // Add user message to transcript
@@ -997,22 +987,21 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
     stopRecording,
     stopSpeaking,
     sendTextMessage,
-    // Memory functions
-    memories: memoryHooks.memories,
-    memoriesLoading: memoryHooks.loading,
-    memoriesError: memoryHooks.error,
-    saveMemory: memoryHooks.saveMemory,
-    recallMemories: memoryHooks.recallMemories,
-    updateMemoryImportance: memoryHooks.updateMemoryImportance,
-    // Action item functions
-    actionItems: actionItemHooks.actionItems,
-    actionItemsLoading: actionItemHooks.loading,
-    actionItemsError: actionItemHooks.error,
-    createActionItem: actionItemHooks.createActionItem,
-    updateActionItem: actionItemHooks.updateActionItem,
-    completeActionItem: actionItemHooks.completeActionItem,
-    scheduleActionItem: actionItemHooks.scheduleActionItem,
-    delegateActionItem: actionItemHooks.delegateActionItem,
+    // Memory and action functions temporarily disabled for stable launch
+    // memories: memoryHooks.memories,
+    // memoriesLoading: memoryHooks.loading,
+    // memoriesError: memoryHooks.error,
+    // saveMemory: memoryHooks.saveMemory,
+    // recallMemories: memoryHooks.recallMemories,
+    // updateMemoryImportance: memoryHooks.updateMemoryImportance,
+    // actionItems: actionItemHooks.actionItems,
+    // actionItemsLoading: actionItemHooks.loading,
+    // actionItemsError: actionItemHooks.error,
+    // createActionItem: actionItemHooks.createActionItem,
+    // updateActionItem: actionItemHooks.updateActionItem,
+    // completeActionItem: actionItemHooks.completeActionItem,
+    // scheduleActionItem: actionItemHooks.scheduleActionItem,
+    // delegateActionItem: actionItemHooks.delegateActionItem,
     // Keep-alive system
     updateActivity,
     resetKeepAliveTimer

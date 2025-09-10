@@ -21,8 +21,6 @@ import { ModelSelector } from '@/components/ModelSelector';
 import { PersonalitySelector } from '@/components/PersonalitySelector';
 import { MoodRing } from '@/components/MoodRing';
 import { ConversationInsights } from '@/components/ConversationInsights';
-import { MemoryTimeline, Memory } from '@/components/MemoryTimeline';
-import { ActionCards, ActionItem } from '@/components/ActionCards';
 import { SimpleErrorBoundary } from '@/components/SimpleErrorBoundary';
 import { GROQ_MODELS, WILLIAM_PERSONALITIES, getDefaultModel, getDefaultPersonality } from '@/lib/models';
 import { getScoreBadgeVariant } from '@/lib/leadScore';
@@ -55,22 +53,6 @@ export default function Chat() {
     stopRecording,
     stopSpeaking,
     sendTextMessage,
-    // Memory functions
-    memories,
-    memoriesLoading,
-    memoriesError,
-    saveMemory,
-    recallMemories,
-    updateMemoryImportance,
-    // Action item functions
-    actionItems,
-    actionItemsLoading,
-    actionItemsError,
-    createActionItem,
-    updateActionItem,
-    completeActionItem,
-    scheduleActionItem,
-    delegateActionItem
   } = useVoiceChat(audioEnabled, 'distil-whisper-large-v3-en', selectedPersonality, podcastModeEnabled, selectedModel);
 
   // Podcast mode hook with voice chat integration
@@ -83,7 +65,6 @@ export default function Chat() {
   const [sessionStarted, setSessionStarted] = useState(false);
   const [textInput, setTextInput] = useState('');
   const [autoInitiated, setAutoInitiated] = useState(false);
-  const [isRecallingMemory, setIsRecallingMemory] = useState(false);
   const [voiceMode, setVoiceMode] = useState<'auto' | 'ptt'>('ptt'); // Default to Push-to-Talk
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connected');
 
@@ -103,14 +84,6 @@ export default function Chat() {
     }
   }, [transcript, isTyping]);
 
-  // Listen for memory recall events
-  useEffect(() => {
-    // Memory recall visualization could be triggered here if needed
-    if (memories.some(m => m.isRecalled)) {
-      setIsRecallingMemory(true);
-      setTimeout(() => setIsRecallingMemory(false), 2000);
-    }
-  }, [memories]);
 
   // Intersection Observer for auto-scroll
   useEffect(() => {
@@ -265,31 +238,6 @@ export default function Chat() {
     }
   };
   
-  // Action item handlers (now using database-backed functions)
-  const handleActionComplete = async (id: string) => {
-    const success = await completeActionItem(id);
-    if (!success) {
-      toast.error('Failed to complete action item');
-    }
-  };
-  
-  const handleActionSchedule = async (id: string, date: string) => {
-    const success = await scheduleActionItem(id, new Date(date));
-    if (success) {
-      toast.success('Task scheduled!');
-    } else {
-      toast.error('Failed to schedule task');
-    }
-  };
-  
-  const handleActionDelegate = async (id: string, owner: string) => {
-    const success = await delegateActionItem(id, owner as 'you' | 'agent' | 'prospect');
-    if (success) {
-      toast.success('Task delegated!');
-    } else {
-      toast.error('Failed to delegate task');
-    }
-  };
 
   if (!sessionStarted) {
     return (
@@ -418,22 +366,6 @@ export default function Chat() {
 
       {/* Main Chat Area */}
       <div className="flex-1 flex max-w-7xl mx-auto w-full">
-        {/* Left Sidebar - Memory Timeline */}
-        <div className="hidden lg:block w-80 border-r bg-background/50 p-4 overflow-y-auto">
-          {memoriesError && (
-            <div className="p-4 text-red-500 text-sm">
-              Error loading memories: {memoriesError}
-            </div>
-          )}
-          <MemoryTimeline 
-            memories={memories}
-            currentSessionId={sessionId}
-            isRecalling={isRecallingMemory}
-            isLoading={memoriesLoading}
-            className="h-full"
-          />
-        </div>
-        
         {/* Center - Chat Transcript */}
         <div className="flex-1 flex flex-col">
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -703,24 +635,6 @@ export default function Chat() {
           </div>
         </div>
       </div>
-        
-        {/* Right Sidebar - Action Cards */}
-        <div className="hidden lg:block w-80 border-l bg-background/50 p-4 overflow-y-auto">
-          {actionItemsError && (
-            <div className="p-4 text-red-500 text-sm">
-              Error loading action items: {actionItemsError}
-            </div>
-          )}
-          <ActionCards
-            actions={actionItems}
-            onComplete={handleActionComplete}
-            onSchedule={handleActionSchedule}
-            onDelegate={handleActionDelegate}
-            isLoading={actionItemsLoading}
-            className="h-full"
-            showFloating={false}
-          />
-        </div>
       </div>
     </div>
     </SimpleErrorBoundary>
