@@ -313,9 +313,10 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
   }
   
   /**
-   * Generate TTS for a text segment and play it
+   * Generate TTS for a text segment and play it with retry logic
    */
-  async function generateAndPlayTTS(text: string): Promise<void> {
+  async function generateAndPlayTTS(text: string, retryCount: number = 0): Promise<void> {
+    const maxRetries = 2;
     try {
       const response = await supabase.functions.invoke('text_to_speech', {
         body: {
@@ -323,6 +324,12 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
           voice: personality?.voice || 'Adam'
         }
       });
+      
+      if (response.error && retryCount < maxRetries) {
+        console.warn(`TTS attempt ${retryCount + 1} failed, retrying...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
+        return generateAndPlayTTS(text, retryCount + 1);
+      }
       
       if (response.data?.audio_base64 && audioPlayerRef.current) {
         return new Promise((resolve) => {
@@ -334,7 +341,12 @@ export function useVoiceChat(audioEnabled: boolean = true, asrModel: string = 'd
         });
       }
     } catch (error) {
-      console.error('TTS generation failed for segment:', error);
+      if (retryCount < maxRetries) {
+        console.warn(`TTS attempt ${retryCount + 1} failed with error, retrying...`, error);
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
+        return generateAndPlayTTS(text, retryCount + 1);
+      }
+      console.error('TTS generation failed after all retries:', error);
     }
   }
   

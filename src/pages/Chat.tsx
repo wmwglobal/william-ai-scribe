@@ -23,6 +23,7 @@ import { MoodRing } from '@/components/MoodRing';
 import { ConversationInsights } from '@/components/ConversationInsights';
 import { MemoryTimeline, Memory } from '@/components/MemoryTimeline';
 import { ActionCards, ActionItem } from '@/components/ActionCards';
+import { SimpleErrorBoundary } from '@/components/SimpleErrorBoundary';
 import { GROQ_MODELS, WILLIAM_PERSONALITIES, getDefaultModel, getDefaultPersonality } from '@/lib/models';
 import { getScoreBadgeVariant } from '@/lib/leadScore';
 import { getSessionAvatar } from '@/lib/avatarUtils';
@@ -33,8 +34,8 @@ export default function Chat() {
   const [selectedModel, setSelectedModel] = useState(getDefaultModel());
   const [selectedPersonality, setSelectedPersonality] = useState(getDefaultPersonality());
   const [audioEnabled, setAudioEnabled] = useState(true);
-  const [continuousMode, setContinuousMode] = useState(false);
-  const [podcastModeEnabled, setPodcastModeEnabled] = useState(false);
+  const [continuousMode, setContinuousMode] = useState(false); // Default to Push-to-Talk for stability
+  const [podcastModeEnabled, setPodcastModeEnabled] = useState(false); // Disabled for stable launch
   
   // Voice chat hook
   const {
@@ -83,6 +84,8 @@ export default function Chat() {
   const [textInput, setTextInput] = useState('');
   const [autoInitiated, setAutoInitiated] = useState(false);
   const [isRecallingMemory, setIsRecallingMemory] = useState(false);
+  const [voiceMode, setVoiceMode] = useState<'auto' | 'ptt'>('ptt'); // Default to Push-to-Talk
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connected');
 
   // Refs
   const transcriptEndRef = useRef<HTMLDivElement>(null);
@@ -207,29 +210,52 @@ export default function Chat() {
     }
   };
 
-  const handleContinuousToggle = async () => {
+  const handleVoiceModeToggle = async () => {
     if (!sessionId) {
       toast.error('Please start a session first');
       return;
     }
 
     try {
-      if (continuousMode) {
+      if (voiceMode === 'auto') {
+        // Switch to PTT
         stopRecording();
         setContinuousMode(false);
-        toast.success('Continuous listening stopped');
+        setVoiceMode('ptt');
+        toast.success('Switched to Push-to-Talk mode');
       } else {
+        // Switch to auto-detect (beta)
         await startRecording();
         setContinuousMode(true);
-        toast.success('Continuous listening started - I\'ll automatically detect when you speak and stop talking!');
+        setVoiceMode('auto');
+        toast.success('Auto voice detection enabled (Beta)');
       }
     } catch (error) {
       console.error('Microphone access error:', error);
       setContinuousMode(false);
+      setVoiceMode('ptt');
       
       // Show specific error message
       const errorMessage = error instanceof Error ? error.message : 'Microphone access failed';
       toast.error(errorMessage);
+    }
+  };
+
+  // PTT handlers for mouse and touch
+  const handlePTTStart = async () => {
+    if (voiceMode === 'ptt' && !isRecording && !isProcessing) {
+      try {
+        await startRecording();
+      } catch (error) {
+        console.error('PTT start error:', error);
+        toast.error('Failed to start recording');
+      }
+    }
+  };
+
+  const handlePTTEnd = () => {
+    if (voiceMode === 'ptt' && isRecording) {
+      stopRecording();
     }
   };
 
@@ -287,21 +313,24 @@ export default function Chat() {
             </div>
 
             <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="podcastMode"
-                  checked={podcastModeEnabled}
-                  onChange={(e) => setPodcastModeEnabled(e.target.checked)}
-                  className="rounded border-gray-300"
-                />
-                <label htmlFor="podcastMode" className="text-sm font-medium">
-                  🎭 Performer Mode
-                  <span className="text-xs text-muted-foreground ml-1">
-                    (Enhanced conversation with dynamic storytelling)
-                  </span>
-                </label>
-              </div>
+              {/* Podcast Mode temporarily disabled for stable launch */}
+              {false && (
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="podcastMode"
+                    checked={podcastModeEnabled}
+                    onChange={(e) => setPodcastModeEnabled(e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <label htmlFor="podcastMode" className="text-sm font-medium">
+                    🎭 Performer Mode
+                    <span className="text-xs text-muted-foreground ml-1">
+                      (Enhanced conversation with dynamic storytelling)
+                    </span>
+                  </label>
+                </div>
+              )}
 
             </div>
 
@@ -335,7 +364,8 @@ export default function Chat() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-hero flex flex-col">
+    <SimpleErrorBoundary>
+      <div className="min-h-screen bg-gradient-hero flex flex-col">
       {/* Header */}
       <div className="bg-background/90 backdrop-blur-sm border-b p-3">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
@@ -537,16 +567,41 @@ export default function Chat() {
               {audioEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </Button>
 
-            <Button
-              variant={continuousMode ? "default" : "outline"}
-              size="sm"
-              onClick={handleContinuousToggle}
-              disabled={!audioEnabled || isProcessing || isTyping}
-              className={`flex-shrink-0 ${continuousMode ? 'bg-green-600 hover:bg-green-700' : ''}`}
-              title={continuousMode ? 'Stop continuous listening' : 'Start continuous listening (auto-detects speech)'}
-            >
-              {continuousMode ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
-            </Button>
+            {/* Voice Mode Toggle */}
+            <div className="flex items-center gap-1">
+              <Button
+                variant={voiceMode === 'auto' ? "default" : "outline"}
+                size="sm"
+                onClick={handleVoiceModeToggle}
+                disabled={!audioEnabled || isProcessing || isTyping}
+                className={`flex-shrink-0 ${voiceMode === 'auto' ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                title={voiceMode === 'auto' ? 'Switch to Push-to-Talk' : 'Enable Auto Voice Detection (Beta)'}
+              >
+                {voiceMode === 'auto' ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+              </Button>
+              {voiceMode === 'auto' && (
+                <Badge variant="secondary" className="text-xs px-1 py-0">BETA</Badge>
+              )}
+            </div>
+
+            {/* Push-to-Talk Button */}
+            {voiceMode === 'ptt' && (
+              <Button
+                variant={isRecording ? "default" : "outline"}
+                size="sm"
+                onMouseDown={handlePTTStart}
+                onMouseUp={handlePTTEnd}
+                onMouseLeave={handlePTTEnd}
+                onTouchStart={handlePTTStart}
+                onTouchEnd={handlePTTEnd}
+                disabled={!audioEnabled || isProcessing || isTyping}
+                className={`flex-shrink-0 ${isRecording ? 'bg-red-600 hover:bg-red-700' : 'border-2 border-dashed border-gray-400'}`}
+                title="Hold to Talk"
+              >
+                <Mic className="w-4 h-4" />
+                <span className="ml-1 text-xs">Hold</span>
+              </Button>
+            )}
 
             {isSpeaking && (
               <Button
@@ -588,7 +643,7 @@ export default function Chat() {
           {/* Status indicators */}
           <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
             <div className="flex items-center gap-4">
-              {continuousMode && (isSpeechActive ? (
+              {voiceMode === 'auto' && (isSpeechActive ? (
                 <span className="text-blue-500">🗣️ Detecting your voice</span>
               ) : isSpeaking ? (
                 <span className="text-green-500">🎵 AI is speaking</span>
@@ -597,9 +652,20 @@ export default function Chat() {
               ) : (
                 <span className="flex items-center gap-1 text-green-600">
                   <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse" />
-                  🎧 Listening continuously - speak naturally and I'll auto-detect when you're done!
+                  🎧 Auto voice detection enabled (Beta) - speak naturally!
                 </span>
               ))}
+              {voiceMode === 'ptt' && !isRecording && !isProcessing && (
+                <span className="flex items-center gap-1 text-gray-600">
+                  🎤 Hold the microphone button to talk
+                </span>
+              )}
+              {voiceMode === 'ptt' && isRecording && (
+                <span className="flex items-center gap-1 text-red-600">
+                  <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse" />
+                  🔴 Recording... Release to send
+                </span>
+              )}
               {isSpeechActive && (
                 <span className="flex items-center gap-1 text-blue-600">
                   <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" />
@@ -621,6 +687,15 @@ export default function Chat() {
             </div>
             
             <div className="flex items-center gap-2">
+              {/* Connection Status */}
+              <div className="flex items-center gap-1">
+                <div className={`w-2 h-2 rounded-full ${
+                  connectionStatus === 'connected' ? 'bg-green-500' :
+                  connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' :
+                  'bg-red-500'
+                }`} />
+                <span className="capitalize">{connectionStatus}</span>
+              </div>
               {sessionId && (
                 <span>Session: {sessionId.slice(0, 8)}...</span>
               )}
@@ -648,5 +723,6 @@ export default function Chat() {
         </div>
       </div>
     </div>
+    </SimpleErrorBoundary>
   );
 }

@@ -169,9 +169,9 @@ export const getPersonalityById = (id: string): Personality | undefined => {
 };
 
 export const getDefaultModel = (): GroqModel => {
-  return GROQ_MODELS[0]; // GPT OSS 120B 128k by default
+  return GROQ_MODELS[0]; // Llama 3.3 70B Versatile - most stable
 };
 
 export const getDefaultPersonality = (): Personality => {
-  return WILLIAM_PERSONALITIES[0]; // William Core by default - main podcast personality
+  return WILLIAM_PERSONALITIES[2]; // Professional - most tested and stable
 };
